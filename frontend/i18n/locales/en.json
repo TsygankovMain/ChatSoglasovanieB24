@@ -100,6 +100,61 @@
       "action": "Shuffle"
     }
   },
+  "approval": {
+    "tab": {
+      "my": "My Requests",
+      "incoming": "Incoming"
+    },
+    "status": {
+      "collecting": "Collecting Votes",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
+    "threshold": {
+      "all": "All Approvers",
+      "majority": "Majority"
+    },
+    "vote": {
+      "approve": "Approved",
+      "reject": "Rejected",
+      "pending": "Pending"
+    },
+    "action": {
+      "create": "Create Request",
+      "cancel": "Cancel"
+    },
+    "context": {
+      "missing_title": "Chat context is missing",
+      "missing_description": "Open the app from the chat message input area (IM_TEXTAREA) and try again."
+    },
+    "backend": {
+      "unavailable_title": "Approval service is temporarily unavailable",
+      "unavailable_description": "Check backend availability and try again."
+    },
+    "form": {
+      "title": "New Approval Request",
+      "comment": "Comment",
+      "comment_placeholder": "Describe the request...",
+      "approvers": "Approvers",
+      "approver_id_placeholder": "Type employee full name",
+      "approver_search_hint": "Type at least 3 characters and pick a user from the list",
+      "approver_search_loading": "Searching users...",
+      "approver_search_no_results": "No users found",
+      "add_approver": "Add",
+      "threshold": "Approval Rule",
+      "files": "Attach Files",
+      "files_hint": "Drag files here or click to select",
+      "error": {
+        "comment_required": "Please enter a comment",
+        "approvers_required": "Add at least one approver",
+        "dialog_required": "Chat context was not found. Reopen the app from the target chat and try again.",
+        "user_search_failed": "Failed to load users list",
+        "generic": "Error creating request"
+      }
+    },
+    "empty": "No requests yet"
+  },
   "components": {
     "backendStatus": {
       "title": "Backend Status",

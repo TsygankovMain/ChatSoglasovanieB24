@@ -1,6 +1,6 @@
 import {computed, type ComputedRef, ref} from "vue";
 import { LoggerBrowser, AjaxError, LoadDataType, useB24Helper } from '@bitrix24/b24jssdk'
-import type { B24Frame } from '@bitrix24/b24jssdk'
+import type { B24Frame, TypeEnumAppStatus } from '@bitrix24/b24jssdk'
 import type { Locale } from 'vue-i18n'
 import type { LocaleObject } from '@nuxtjs/i18n'
 
@@ -18,6 +18,49 @@ const { initB24Helper, getB24Helper, destroyB24Helper: destroyB24HelperOry, useP
 const isInitB24Helper = ref(false)
 
 const moduleId = 'main'
+
+type InitData = {
+  appInfo?: {
+    data?: {
+      version?: number
+      status?: TypeEnumAppStatus
+    }
+  }
+  appSettings?: {
+    data?: Map<string, unknown>
+  }
+  userSettings?: {
+    data?: Map<string, unknown>
+  }
+  profileData?: {
+    data?: {
+      id?: number
+      name?: string
+      lastName?: string
+      isAdmin?: boolean
+    }
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === 'object' && value !== null) {
+    return value as Record<string, unknown>
+  }
+  return {}
+}
+
+function asMap(value: unknown): Map<string, unknown> {
+  return new Map(Object.entries(asRecord(value)))
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function isAdminValue(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'Y' || value === 'y'
+}
 
 /**
  * Composable handling application initialization
@@ -47,24 +90,67 @@ export const useAppInit = (loggerTitle?: string) => {
     $logger.info('InitApp start')
     await initLang($b24, localesI18n, setLocale)
 
-    await initB24Helper(
-      $b24,
-      [
-        LoadDataType.App,
-        LoadDataType.AppOptions,
-        LoadDataType.UserOptions,
-        LoadDataType.Currency,
-        LoadDataType.Profile
-      ]
-    )
-    isInitB24Helper.value = true
+    let data: InitData
 
-    const data = {
-      appInfo: getB24Helper().appInfo,
-      appSettings: getB24Helper().appOptions,
-      userSettings: getB24Helper().userOptions,
-      profileData: getB24Helper().profileInfo,
+    try {
+      await initB24Helper(
+        $b24,
+        [
+          LoadDataType.App,
+          LoadDataType.AppOptions,
+          LoadDataType.UserOptions,
+          LoadDataType.Profile
+        ]
+      )
+      isInitB24Helper.value = true
+
+      const helper = getB24Helper()
+      data = {
+        appInfo: helper.appInfo as InitData['appInfo'],
+        appSettings: helper.appOptions as InitData['appSettings'],
+        userSettings: helper.userOptions as InitData['userSettings'],
+        profileData: helper.profileInfo as InitData['profileData'],
+      }
+    } catch (error: unknown) {
+      isInitB24Helper.value = false
+      $logger.warn('B24Helper partial load failed, fallback to direct batch', error)
+
+      const response = await $b24.callBatch({
+        appInfo: { method: 'app.info' },
+        appSettings: { method: 'app.option.get' },
+        userSettings: { method: 'user.option.get' },
+        profileData: { method: 'profile' },
+      })
+      const fallbackData = response.getData() as Record<string, unknown>
+      const appInfo = asRecord(fallbackData.appInfo)
+      const profileData = asRecord(fallbackData.profileData)
+      const appSettingsData = asRecord(fallbackData.appSettings)
+      const userSettingsData = asRecord(fallbackData.userSettings)
+
+      data = {
+        appInfo: {
+          data: {
+            version: toNumber(appInfo.VERSION ?? appInfo.version, 1),
+            status: (appInfo.STATUS ?? appInfo.status) as TypeEnumAppStatus,
+          }
+        },
+        appSettings: {
+          data: asMap(appSettingsData)
+        },
+        userSettings: {
+          data: asMap(userSettingsData)
+        },
+        profileData: {
+          data: {
+            id: toNumber(profileData.ID ?? profileData.id, 0),
+            name: String(profileData.NAME ?? profileData.name ?? ''),
+            lastName: String(profileData.LAST_NAME ?? profileData.lastName ?? ''),
+            isAdmin: isAdminValue(profileData.ADMIN ?? profileData.isAdmin),
+          }
+        },
+      }
     }
+
     $logger.log('Init data >>', data)
 
     /**
@@ -91,15 +177,24 @@ export const useAppInit = (loggerTitle?: string) => {
     })
 
     appSettings.setB24($b24)
+    const appSettingsMap = data.appSettings?.data ?? new Map<string, unknown>()
+    const userSettingsMap = data.userSettings?.data ?? new Map<string, unknown>()
+    const appConfigSettings = appSettingsMap.get('configSettings')
+    const userConfigSettings = userSettingsMap.get('configSettings')
+
     appSettings.initFromBatch({
-      version: (data.appInfo?.data.version ?? 1),
-      status: data.appInfo?.data.status,
-      configSettings: (data.appSettings?.data ?? new Map()).get('configSettings')
+      version: (data.appInfo?.data?.version ?? 1),
+      status: data.appInfo?.data?.status,
+      configSettings: (typeof appConfigSettings === 'object' && appConfigSettings !== null)
+        ? appConfigSettings as Record<string, unknown>
+        : undefined
     })
 
     userSettings.setB24($b24)
     userSettings.initFromBatch({
-      configSettings: (data.userSettings?.data ?? new Map()).get('configSettings')
+      configSettings: (typeof userConfigSettings === 'object' && userConfigSettings !== null)
+        ? userConfigSettings as Record<string, unknown>
+        : undefined
     })
 
     await api.init($b24)
@@ -125,10 +220,14 @@ export const useAppInit = (loggerTitle?: string) => {
    * Reloads data
    */
   async function reloadData() {
+    if (!b24Helper.value) {
+      $logger.warn('reloadData skipped, B24Helper is not initialized')
+      return
+    }
+
     await b24Helper.value?.loadData([
       LoadDataType.AppOptions,
-      LoadDataType.UserOptions,
-      LoadDataType.Currency
+      LoadDataType.UserOptions
     ])
 
     const data = {

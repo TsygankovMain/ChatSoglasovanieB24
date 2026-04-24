@@ -1,0 +1,124 @@
+<h2>Архитектура — Вариант B</h2>
+<p class="subtitle">Django как единый API. Фронт — тонкий клиент. Все правила на бэке.</p>
+
+<div class="section">
+  <h3>Общая схема</h3>
+  <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:1.5rem;font-family:monospace;font-size:0.82rem;line-height:2">
+
+    <div style="display:grid;grid-template-columns:1fr 60px 1fr 60px 1fr;gap:0;align-items:center;text-align:center">
+
+      <div style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.5);border-radius:8px;padding:1rem">
+        <div style="font-size:1.2rem">🖥️</div>
+        <div style="font-weight:bold;margin:0.3rem 0">Nuxt 3</div>
+        <div style="font-size:0.75rem;opacity:0.7">Тонкий клиент<br>Только UI + вызовы /api/*</div>
+      </div>
+
+      <div style="text-align:center;opacity:0.6">
+        <div>→</div>
+        <div style="font-size:0.7rem">JWT</div>
+      </div>
+
+      <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.5);border-radius:8px;padding:1rem">
+        <div style="font-size:1.2rem">🐍</div>
+        <div style="font-weight:bold;margin:0.3rem 0">Django API</div>
+        <div style="font-size:0.75rem;opacity:0.7">Бизнес-правила<br>Агрегация голосов<br>Валидация</div>
+      </div>
+
+      <div style="text-align:center;opacity:0.6">
+        <div>→</div>
+        <div style="font-size:0.7rem">REST</div>
+      </div>
+
+      <div style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);border-radius:8px;padding:1rem">
+        <div style="font-size:1.2rem">☁️</div>
+        <div style="font-weight:bold;margin:0.3rem 0">Bitrix24</div>
+        <div style="font-size:0.75rem;opacity:0.7">Entity Storage<br>Disk (файлы)<br>Bot + Chat</div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,0.1)">
+      <div style="text-align:center;opacity:0.6;margin-bottom:0.5rem;font-size:0.75rem">ВХОДЯЩИЙ WEBHOOK (кнопки бота)</div>
+      <div style="display:grid;grid-template-columns:1fr 60px 1fr;align-items:center;text-align:center">
+        <div style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.5);border-radius:8px;padding:0.6rem;font-size:0.8rem">
+          Bitrix24<br><span style="opacity:0.6">клик по кнопке</span>
+        </div>
+        <div style="opacity:0.6">→</div>
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.5);border-radius:8px;padding:0.6rem;font-size:0.8rem">
+          Django<br><span style="opacity:0.6">POST /api/vote/handle</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Django endpoints</h3>
+  <div style="display:grid;gap:0.5rem;font-size:0.85rem">
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#6ee7b7">POST /api/approval/create</code>
+      <span>Создать запрос: сохранить в entity, создать папку на диске, опубликовать бот-сообщение</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#6ee7b7">GET /api/approval/list</code>
+      <span>Список запросов текущего пользователя</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#6ee7b7">GET /api/approval/:id</code>
+      <span>Детали запроса + текущие голоса</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#fbbf24">POST /api/vote/handle</code>
+      <span>Webhook от Bitrix24: обработать голос, применить правила, обновить статус</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#f87171">POST /api/approval/cancel</code>
+      <span>Отменить запрос (только инициатор)</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#94a3b8">POST /api/install</code>
+      <span>Установка приложения, регистрация бота и placement</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px 1fr;gap:1rem;padding:0.6rem;background:rgba(255,255,255,0.04);border-radius:6px">
+      <code style="color:#94a3b8">GET /api/health</code>
+      <span>Health check</span>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Entity Storage структура</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:0.82rem">
+
+    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:1rem">
+      <div style="font-weight:bold;margin-bottom:0.5rem">entity: approval_requests</div>
+      <div style="opacity:0.6;font-size:0.75rem;margin-bottom:0.5rem">PROPERTY_*</div>
+      <div>INITIATOR_ID</div>
+      <div>COMMENT</div>
+      <div>APPROVER_IDS <span style="opacity:0.5">(json)</span></div>
+      <div>THRESHOLD_TYPE <span style="opacity:0.5">(all/majority)</span></div>
+      <div>THRESHOLD_VALUE</div>
+      <div>STATUS <span style="opacity:0.5">(collecting/approved/rejected/cancelled)</span></div>
+      <div>BOT_MESSAGE_ID</div>
+      <div>DISK_FOLDER_ID</div>
+      <div>FILE_IDS <span style="opacity:0.5">(json)</span></div>
+      <div>CREATED_AT</div>
+    </div>
+
+    <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:1rem">
+      <div style="font-weight:bold;margin-bottom:0.5rem">entity: approval_votes</div>
+      <div style="opacity:0.6;font-size:0.75rem;margin-bottom:0.5rem">PROPERTY_*</div>
+      <div>REQUEST_ID</div>
+      <div>USER_ID</div>
+      <div>DECISION <span style="opacity:0.5">(approve/reject)</span></div>
+      <div>COMMENT</div>
+      <div>VOTED_AT</div>
+    </div>
+
+  </div>
+</div>
+
+<div style="margin-top:1.5rem;padding:1rem;background:rgba(99,102,241,0.1);border-radius:8px;border-left:3px solid #6366f1">
+  <span class="label">Выглядит ли эта архитектура правильно?</span>
+  <p style="margin:0.5rem 0 0;font-size:0.9rem">Если ок — следующий шаг: форма создания запроса и флоу файлов. Если нужно что-то изменить — скажите.</p>
+</div>

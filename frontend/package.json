@@ -24,6 +24,12 @@
     "luxon": "^3.7.2",
     "ufo": "^1.6.1"
   },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.25.11"
+    },
+    "onlyBuiltDependencies": ["@parcel/watcher", "esbuild", "sharp"]
+  },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
     "@nuxt/eslint": "^1.9.0",

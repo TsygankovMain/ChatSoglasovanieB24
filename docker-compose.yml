@@ -130,6 +130,9 @@ services:
       - "8000"
     ports:
       - "8000:8000"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       - ./backends/python/api:/var/www/api
       - ./logs/python:/var/log/python

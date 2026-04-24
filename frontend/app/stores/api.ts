@@ -1,6 +1,28 @@
 import type { B24Frame } from '@bitrix24/b24jssdk'
 import { withoutTrailingSlash } from 'ufo'
 
+export interface ApprovalVote {
+  id: string
+  user_id: string
+  decision: 'approve' | 'reject'
+  comment: string
+  voted_at: string
+}
+
+export interface ApprovalRequest {
+  id: string
+  initiator_id: string
+  comment: string
+  approver_ids: string[]
+  threshold_type: 'all' | 'majority'
+  status: 'collecting' | 'approved' | 'rejected' | 'cancelled'
+  dialog_id: string
+  bot_message_id: string
+  file_ids: string[]
+  created_at: string
+  votes?: ApprovalVote[]
+}
+
 export const useApiStore = defineStore(
   'api',
   () => {
@@ -69,6 +91,35 @@ export const useApiStore = defineStore(
       })
     }
 
+    const approvalCreate = async (formData: FormData): Promise<ApprovalRequest> => {
+      return await $fetch(`${apiUrl}/api/approval/create`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenJWT.value}` },
+        body: formData,
+      })
+    }
+
+    const approvalList = async (role: 'initiator' | 'approver'): Promise<{ items: ApprovalRequest[] }> => {
+      return await $api('/api/approval/list', {
+        headers: { Authorization: `Bearer ${tokenJWT.value}` },
+        params: { role },
+      })
+    }
+
+    const approvalGet = async (id: string): Promise<ApprovalRequest> => {
+      return await $api(`/api/approval/${id}`, {
+        headers: { Authorization: `Bearer ${tokenJWT.value}` },
+      })
+    }
+
+    const approvalCancel = async (requestId: string): Promise<ApprovalRequest> => {
+      return await $api('/api/approval/cancel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${tokenJWT.value}` },
+        body: JSON.stringify({ request_id: requestId }),
+      })
+    }
+
     const init = async (b24: B24Frame) => {
       $b24 = b24
       await reinitToken()
@@ -111,7 +162,11 @@ export const useApiStore = defineStore(
       init,
       getEnum,
       getList,
-      postInstall
+      postInstall,
+      approvalCreate,
+      approvalList,
+      approvalGet,
+      approvalCancel,
     }
   }
 )

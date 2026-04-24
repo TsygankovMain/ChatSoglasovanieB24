@@ -1,0 +1,86 @@
+<h2>Структура кода</h2>
+<p class="subtitle">Django-приложение и Nuxt-компоненты. Последний раздел дизайна.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1rem">
+
+  <!-- DJANGO -->
+  <div>
+    <h3 style="margin-bottom:1rem">🐍 Django (backends/python/api/)</h3>
+    <div style="font-family:monospace;font-size:0.78rem;line-height:1.8;background:rgba(255,255,255,0.03);border-radius:10px;padding:1rem">
+      <div style="opacity:0.4">backends/python/api/</div>
+      <div>├── <span style="color:#6ee7b7">approvals/</span> <span style="opacity:0.4"># новый Django app</span></div>
+      <div>│   ├── <span style="color:#93c5fd">views.py</span> <span style="opacity:0.4"># endpoints</span></div>
+      <div>│   ├── <span style="color:#93c5fd">services.py</span> <span style="opacity:0.4"># бизнес-логика</span></div>
+      <div>│   ├── <span style="color:#93c5fd">rules.py</span> <span style="opacity:0.4"># правила голосования</span></div>
+      <div>│   ├── <span style="color:#93c5fd">b24_client.py</span> <span style="opacity:0.4"># обёртка B24 REST</span></div>
+      <div>│   ├── <span style="color:#93c5fd">serializers.py</span></div>
+      <div>│   └── <span style="color:#93c5fd">urls.py</span></div>
+      <div>├── <span style="color:#6ee7b7">bot/</span> <span style="opacity:0.4"># Bot Platform 2.0</span></div>
+      <div>│   ├── <span style="color:#93c5fd">handler.py</span> <span style="opacity:0.4"># webhook handler</span></div>
+      <div>│   ├── <span style="color:#93c5fd">messages.py</span> <span style="opacity:0.4"># шаблоны сообщений</span></div>
+      <div>│   └── <span style="color:#93c5fd">keyboard.py</span> <span style="opacity:0.4"># кнопки (keyboard builder)</span></div>
+      <div>├── <span style="color:#6ee7b7">disk/</span></div>
+      <div>│   └── <span style="color:#93c5fd">service.py</span> <span style="opacity:0.4"># папки + загрузка файлов</span></div>
+      <div>├── <span style="color:#fbbf24">config/</span></div>
+      <div>│   ├── settings.py</div>
+      <div>│   └── urls.py</div>
+      <div>└── <span style="color:#fbbf24">core/</span></div>
+      <div>    ├── <span style="color:#93c5fd">auth.py</span> <span style="opacity:0.4"># JWT middleware</span></div>
+      <div>    └── <span style="color:#93c5fd">b24_entity.py</span> <span style="opacity:0.4"># entity storage helpers</span></div>
+    </div>
+
+    <div style="margin-top:1rem;font-size:0.8rem;display:flex;flex-direction:column;gap:0.4rem">
+      <div style="padding:0.4rem 0.6rem;background:rgba(16,185,129,0.1);border-radius:5px;border-left:2px solid #6ee7b7">
+        <strong>rules.py</strong> — ApprovalRules: can_vote(), is_approved(), is_rejected(). Изолированная логика, легко тестить.
+      </div>
+      <div style="padding:0.4rem 0.6rem;background:rgba(99,102,241,0.1);border-radius:5px;border-left:2px solid #6366f1">
+        <strong>b24_client.py</strong> — единственное место вызовов B24 REST API. Все остальные модули используют его.
+      </div>
+      <div style="padding:0.4rem 0.6rem;background:rgba(245,158,11,0.1);border-radius:5px;border-left:2px solid #f59e0b">
+        <strong>keyboard.py</strong> — строит Bot Platform 2.0 keyboard JSON с кнопками Одобрить/Отклонить.
+      </div>
+    </div>
+  </div>
+
+  <!-- NUXT -->
+  <div>
+    <h3 style="margin-bottom:1rem">🖥️ Nuxt (frontend/app/)</h3>
+    <div style="font-family:monospace;font-size:0.78rem;line-height:1.8;background:rgba(255,255,255,0.03);border-radius:10px;padding:1rem">
+      <div style="opacity:0.4">frontend/app/</div>
+      <div>├── <span style="color:#6ee7b7">pages/</span></div>
+      <div>│   ├── <span style="color:#93c5fd">index.client.vue</span> <span style="opacity:0.4"># список запросов</span></div>
+      <div>│   └── handler/</div>
+      <div>│       └── <span style="color:#93c5fd">placement-crm-deal-detail-tab.client.vue</span></div>
+      <div>├── <span style="color:#6ee7b7">components/</span></div>
+      <div>│   ├── approval/</div>
+      <div>│   │   ├── <span style="color:#fbbf24">CreateForm.vue</span> <span style="opacity:0.4"># форма (одна страница)</span></div>
+      <div>│   │   ├── <span style="color:#fbbf24">RequestCard.vue</span> <span style="opacity:0.4"># карточка запроса</span></div>
+      <div>│   │   ├── <span style="color:#fbbf24">VoteStatus.vue</span> <span style="opacity:0.4"># счётчики голосов</span></div>
+      <div>│   │   └── <span style="color:#fbbf24">StatusBadge.vue</span> <span style="opacity:0.4"># бейдж статуса</span></div>
+      <div>│   └── <span style="color:#93c5fd">FileUploadArea.vue</span></div>
+      <div>├── <span style="color:#6ee7b7">composables/</span></div>
+      <div>│   ├── <span style="color:#93c5fd">useApproval.ts</span> <span style="opacity:0.4"># create, list, cancel</span></div>
+      <div>│   └── <span style="color:#93c5fd">useFileUpload.ts</span> <span style="opacity:0.4"># multipart upload</span></div>
+      <div>├── <span style="color:#6ee7b7">stores/</span></div>
+      <div>│   └── <span style="color:#93c5fd">approvals.ts</span> <span style="opacity:0.4"># Pinia store</span></div>
+      <div>└── <span style="color:#6ee7b7">locales/</span></div>
+      <div>    ├── ru.json</div>
+      <div>    └── en.json</div>
+    </div>
+
+    <div style="margin-top:1rem;font-size:0.8rem;display:flex;flex-direction:column;gap:0.4rem">
+      <div style="padding:0.4rem 0.6rem;background:rgba(245,158,11,0.1);border-radius:5px;border-left:2px solid #f59e0b">
+        <strong>CreateForm.vue</strong> — B24UI компоненты: UInput, UTextarea, USelect (threshold), B24UserSelector, UButton. Mobile-first.
+      </div>
+      <div style="padding:0.4rem 0.6rem;background:rgba(99,102,241,0.1);border-radius:5px;border-left:2px solid #6366f1">
+        <strong>index.vue</strong> — список запросов инициатора + входящих согласований. Разные вкладки.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:1.5rem;padding:1rem;background:rgba(16,185,129,0.1);border-radius:8px;border-left:3px solid #6ee7b7">
+  <span class="label">Дизайн готов к записи</span>
+  <p style="margin:0.5rem 0 0;font-size:0.85rem">Если структура выглядит правильно — запишу спеку в <code>docs/superpowers/specs/</code> и перейдём к плану реализации.</p>
+</div>

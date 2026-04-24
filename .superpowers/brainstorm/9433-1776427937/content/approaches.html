@@ -1,0 +1,83 @@
+<h2>Архитектура системы — 3 подхода</h2>
+<p class="subtitle">Выберите подход перед проектированием деталей</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Фронт-тяжёлый (через B24 JS SDK)</h3>
+      <p>Фронтенд напрямую вызывает Bitrix24 REST. Django только обрабатывает входящие webhook-события от кнопок бота.</p>
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:0.8rem;margin:0.5rem 0;font-size:0.85rem;font-family:monospace">
+        Nuxt → B24 JS SDK → entity.item.add / imbot.message.add<br>
+        Bitrix24 кнопка → webhook → Django → валидация → entity.item.update
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Меньше кода на бэкенде</li>
+          <li>Быстрее разработка</li>
+          <li>SDK берёт авторизацию на себя</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Бизнес-логика размазана по фронту и беку</li>
+          <li>Сложнее тестировать</li>
+          <li>Токены B24 видны клиенту</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Бэк-тяжёлый (Django как API)</h3>
+      <p>Фронт обращается только к Django. Django хранит B24-токены на сервере и сам вызывает Bitrix24 REST. Единственная точка правды.</p>
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:0.8rem;margin:0.5rem 0;font-size:0.85rem;font-family:monospace">
+        Nuxt → POST /api/approval/create → Django → B24 REST<br>
+        Bitrix24 кнопка → webhook → Django → правила → B24 REST
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Вся бизнес-логика в одном месте</li>
+          <li>Легко тестировать (unit tests)</li>
+          <li>Безопаснее — токены на сервере</li>
+          <li>Проще добавлять правила позже</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Больше кода изначально</li>
+          <li>Все запросы через бэк</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Гибрид (чтение на фронте, запись через бэк)</h3>
+      <p>Фронт читает данные напрямую из B24 (entity.item.list). Все мутации — через Django (создать, голосовать, отменить).</p>
+      <div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:0.8rem;margin:0.5rem 0;font-size:0.85rem;font-family:monospace">
+        Nuxt → B24 JS SDK → entity.item.list (чтение)<br>
+        Nuxt → POST /api/approval/create → Django (запись)<br>
+        Bitrix24 кнопка → webhook → Django → правила
+      </div>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Быстрое чтение без лишнего слоя</li>
+          <li>Правила и мутации централизованы</li>
+          <li>Разумный баланс</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Два пути к данным — сложнее дебажить</li>
+          <li>Надо синхронизировать права доступа</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:1.5rem;padding:1rem;background:rgba(255,200,0,0.1);border-radius:8px;border-left:3px solid #f59e0b">
+  <span class="label">Мой совет</span>
+  <p style="margin:0.5rem 0 0">Вариант <strong>B</strong> — правильный для приложения с бизнес-правилами. Вся логика в Django: порог одобрения, защита от двойного голоса, мгновенный отказ. Тестируется изолированно. Фронт — тонкий клиент.</p>
+</div>

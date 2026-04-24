@@ -1,0 +1,70 @@
+<h2>Где хранить данные запросов и голосов?</h2>
+<p class="subtitle">Это ключевое архитектурное решение — влияет на всё остальное</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Bitrix24 Entity Storage</h3>
+      <p>Данные живут в самом Bitrix24 через REST API (<code>entity.item.add</code>, <code>entity.item.get</code>). Как написано в спецификации проекта.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Нет своей БД — проще инфраструктура</li>
+          <li>Данные в Bitrix24 — доступны из CRM</li>
+          <li>Меньше кода на бэкенде</li>
+          <li>Соответствует оригинальной спеке</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Лимиты на запросы к API</li>
+          <li>Нет сложных JOIN-запросов</li>
+          <li>Зависимость от Bitrix24</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>PostgreSQL (своя база)</h3>
+      <p>Данные в PostgreSQL через Django ORM. Bitrix24 используется только для бота и кнопок. В docker-compose уже есть.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Полная мощь SQL и транзакций</li>
+          <li>Решает race conditions при голосовании</li>
+          <li>Быстрые запросы, сложная аналитика</li>
+          <li>Независимость от лимитов API</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Своя инфраструктура (PostgreSQL)</li>
+          <li>Больше кода (модели, миграции)</li>
+          <li>Данные вне Bitrix24</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Гибрид</h3>
+      <p>PostgreSQL как основное хранилище + синхронизация с Bitrix24 entity для видимости внутри CRM.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Плюсы</h4><ul>
+          <li>Лучшее из двух миров</li>
+          <li>Надёжность + видимость в CRM</li>
+        </ul></div>
+        <div class="cons"><h4>Минусы</h4><ul>
+          <li>Двойная логика синхронизации</li>
+          <li>Сложнее отлаживать</li>
+          <li>Избыточно для MVP</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:1.5rem;padding:1rem;background:rgba(255,200,0,0.1);border-radius:8px;border-left:3px solid #f59e0b">
+  <span class="label">Мой совет</span>
+  <p style="margin:0.5rem 0 0">Вариант <strong>B (PostgreSQL)</strong> — правильный выбор для продакшена. Race conditions при одновременных голосах — реальная проблема. SELECT FOR UPDATE в Django решает это элегантно. Entity storage не даёт транзакций.</p>
+</div>

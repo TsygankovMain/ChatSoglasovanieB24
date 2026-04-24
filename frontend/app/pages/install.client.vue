@@ -32,6 +32,22 @@ const progressValue = ref<null | number>(null)
 const apiStore = useApiStore()
 // endregion ////
 
+type PlacementBinding = {
+  placement?: string
+  handler?: string
+}
+
+async function validatePlacementBinding(key: { placement: string, handler: string }): Promise<void> {
+  const verifyResponse = await $b24.callBatch({
+    placementList: { method: 'placement.get' }
+  })
+  const placementList = ((verifyResponse.getData() as { placementList?: PlacementBinding[] }).placementList ?? [])
+  const isBound = placementList.some(item => item.placement === key.placement && item.handler === key.handler)
+  if (!isBound) {
+    throw new Error(`Placement bind failed for ${key.placement} (${key.handler})`)
+  }
+}
+
 // region Steps ////
 const steps = ref<Record<string, IStep>>({
   init: {
@@ -86,8 +102,17 @@ const steps = ref<Record<string, IStep>>({
     caption: t('page.install.step.placement.caption'),
     action: async () => {
       const key = {
-        placement: 'CRM_DEAL_DETAIL_TAB',
-        handler: `${appUrl}/handler/placement-crm-deal-detail-tab`
+        placement: 'IM_TEXTAREA',
+        handler: `${appUrl}/`
+      }
+      const options = {
+        iconName: 'chat-compose',
+        context: 'ALL',
+        role: 'USER',
+        extranet: 'N',
+        color: 'LIGHT_BLUE',
+        width: 400,
+        height: 300
       }
       const exists = (steps.value.init?.data?.placementList as { placement: string, handler: string }[]).some(item => item.placement === key.placement && item.handler === key.handler )
       if (exists) {
@@ -95,7 +120,8 @@ const steps = ref<Record<string, IStep>>({
           {
             method: 'placement.unbind',
             params: {
-              PLACEMENT: key.placement
+              PLACEMENT: key.placement,
+              HANDLER: key.handler
             }
           },
           {
@@ -103,14 +129,13 @@ const steps = ref<Record<string, IStep>>({
             params: {
               PLACEMENT: key.placement,
               HANDLER: key.handler,
-              TITLE: '[demo] Some Tab',
-              OPTIONS: {
-                errorHandlerUrl: `${appUrl}/handler/background-some-problem`
-              }
+              TITLE: 'Запрос согласования',
+              OPTIONS: options
             }
           }
         ])
 
+        await validatePlacementBinding(key)
         return
       }
 
@@ -120,13 +145,12 @@ const steps = ref<Record<string, IStep>>({
           params: {
             PLACEMENT: key.placement,
             HANDLER: key.handler,
-            TITLE: '[demo] Some Tab',
-            OPTIONS: {
-              errorHandlerUrl: `${appUrl}/handler/background-some-problem`
-            }
+            TITLE: 'Запрос согласования',
+            OPTIONS: options
           }
         }
       ])
+      await validatePlacementBinding(key)
     }
   },
   userFields: {
@@ -194,7 +218,7 @@ const steps = ref<Record<string, IStep>>({
         throw new Error('Some problem with auth. See App logic')
       }
 
-      await apiStore.postInstall({
+      const installResponse = await apiStore.postInstall({
         DOMAIN: withoutTrailingSlash(authData.domain).replace('https://', '').replace('http://', ''),
         PROTOCOL: authData.domain.includes('https://') ? 1 : 0,
         LICENSE: steps.value.init?.data?.appInfo.LICENSE,
@@ -214,6 +238,16 @@ const steps = ref<Record<string, IStep>>({
         PLACEMENT: $b24.placement.title,
         PLACEMENT_OPTIONS: $b24.placement.options
       })
+
+      const installSteps = installResponse?.steps
+      if (installSteps && typeof installSteps === 'object') {
+        const failedSteps = Object.entries(installSteps)
+          .filter(([, value]) => typeof value === 'string' && !value.toLowerCase().startsWith('ok'))
+        if (failedSteps.length > 0) {
+          const details = failedSteps.map(([name, value]) => `${name}: ${value}`).join('; ')
+          throw new Error(`Install failed on backend steps: ${details}`)
+        }
+      }
     }
   },
   finish: {
@@ -260,7 +294,7 @@ async function makeInit(): Promise<void> {
         placement: string
         userId: number
         handler: string
-        options: any
+        options: Record<string, unknown>
         title: string
         description: string
       }[]
@@ -299,7 +333,7 @@ onMounted(async () => {
       stepCode.value = key
       await step.action()
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     processErrorGlobal(error)
   }
 })

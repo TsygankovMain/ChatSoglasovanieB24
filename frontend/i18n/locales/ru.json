@@ -100,6 +100,61 @@
       "action": "Перемешать"
     }
   },
+  "approval": {
+    "tab": {
+      "my": "Мои запросы",
+      "incoming": "Входящие"
+    },
+    "status": {
+      "collecting": "Сбор голосов",
+      "approved": "Одобрено",
+      "rejected": "Отклонено",
+      "cancelled": "Отменено"
+    },
+    "threshold": {
+      "all": "Все согласующие",
+      "majority": "Большинство"
+    },
+    "vote": {
+      "approve": "Одобрено",
+      "reject": "Отклонено",
+      "pending": "Ожидает"
+    },
+    "action": {
+      "create": "Создать запрос",
+      "cancel": "Отменить"
+    },
+    "context": {
+      "missing_title": "Контекст чата не обнаружен",
+      "missing_description": "Откройте приложение из поля ввода сообщения в чате (IM_TEXTAREA) и повторите попытку."
+    },
+    "backend": {
+      "unavailable_title": "Сервис согласований временно недоступен",
+      "unavailable_description": "Проверьте backend и повторите попытку."
+    },
+    "form": {
+      "title": "Новый запрос на согласование",
+      "comment": "Комментарий",
+      "comment_placeholder": "Опишите суть запроса...",
+      "approvers": "Согласующие",
+      "approver_id_placeholder": "Введите ФИО сотрудника",
+      "approver_search_hint": "Введите минимум 3 символа и выберите сотрудника из списка",
+      "approver_search_loading": "Поиск сотрудников...",
+      "approver_search_no_results": "Сотрудники не найдены",
+      "add_approver": "Добавить",
+      "threshold": "Правило одобрения",
+      "files": "Прикрепить файлы",
+      "files_hint": "Перетащите файлы сюда или нажмите для выбора",
+      "error": {
+        "comment_required": "Укажите комментарий",
+        "approvers_required": "Добавьте хотя бы одного согласующего",
+        "dialog_required": "Не удалось определить чат. Откройте приложение из нужного чата и попробуйте снова.",
+        "user_search_failed": "Не удалось загрузить список сотрудников",
+        "generic": "Ошибка при создании запроса"
+      }
+    },
+    "empty": "Запросов пока нет"
+  },
   "components": {
     "backendStatus": {
       "title": "Статус бэкэнда",

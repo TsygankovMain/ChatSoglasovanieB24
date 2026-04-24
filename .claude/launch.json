@@ -1,0 +1,59 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Frontend (Nuxt)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Backend API - Node",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8000
+    },
+    {
+      "name": "MCP Server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": null
+    },
+    {
+      "name": "Docker Compose - Frontend + PHP",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["--profile", "frontend,php,cloudpub", "up", "--build"],
+      "port": 3000
+    },
+    {
+      "name": "Docker Compose - Frontend + Python",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["--profile", "frontend,python,cloudpub", "up", "--build"],
+      "port": 3000
+    },
+    {
+      "name": "Docker Compose - Frontend + Node",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["--profile", "frontend,node,cloudpub", "up", "--build"],
+      "port": 3000
+    },
+    {
+      "name": "Docker Compose - Frontend Only",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["--profile", "frontend,cloudpub", "up", "--build"],
+      "port": 3000
+    },
+    {
+      "name": "Python API",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["manage.py", "runserver", "0.0.0.0:8000"],
+      "port": 8000
+    },
+    {
+      "name": "Database - PostgreSQL",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["up", "database"],
+      "port": 5432
+    }
+  ]
+}

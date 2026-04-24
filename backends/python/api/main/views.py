@@ -8,7 +8,8 @@ from .utils.decorators import auth_required, log_errors
 from .utils import AuthorizedRequest
 from .models import ApplicationInstallation
 
-from config import load_config
+from config import load_config, config
+from approvals.b24_client import ApprovalB24Client
 
 __all__ = [
     "root",
@@ -77,7 +78,35 @@ def install(request: AuthorizedRequest):
         },
     )
 
-    return JsonResponse({"message": "Installation successful"})
+    import logging
+    logger = logging.getLogger(__name__)
+
+    b24 = ApprovalB24Client(bitrix24_account)
+    steps = {}
+
+    try:
+        b24.create_entity_storages()
+        steps["entity_storages"] = "ok"
+    except Exception as e:
+        steps["entity_storages"] = str(e)
+
+    webhook_url = f"{config.app_base_url}/api/vote/handle"
+    try:
+        bot_id = b24.register_bot("Согласование", webhook_url)
+        if bot_id:
+            b24.set_app_option("BOT_ID", bot_id)
+        steps["bot"] = f"ok, id={bot_id}"
+    except Exception as e:
+        steps["bot"] = str(e)
+
+    try:
+        b24.bind_placement("IM_TEXTAREA", f"{config.app_base_url}/")
+        steps["placement"] = "ok"
+    except Exception as e:
+        steps["placement"] = str(e)
+
+    logger.info("Install steps: %s", steps)
+    return JsonResponse({"message": "Installation successful", "steps": steps})
 
 
 @xframe_options_exempt

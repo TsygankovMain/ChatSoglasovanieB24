@@ -1,0 +1,111 @@
+<h2>Флоу создания запроса и голосования</h2>
+<p class="subtitle">Одна форма → Django → Bitrix24. Посмотрите на последовательность шагов.</p>
+
+<div class="section">
+  <h3>1. Создание запроса</h3>
+  <div style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.82rem">
+
+    <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+      <div style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:6px;padding:0.4rem 0.6rem;text-align:center">Nuxt (форма)</div>
+      <div style="opacity:0.4;text-align:center">→</div>
+      <div style="opacity:0.7">Пользователь заполняет: комментарий, согласующие, правило, файлы</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+      <div style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:6px;padding:0.4rem 0.6rem;text-align:center">Nuxt</div>
+      <div style="opacity:0.4;text-align:center">→</div>
+      <div style="opacity:0.7"><code>POST /api/approval/create</code> (multipart: поля + файлы)</div>
+    </div>
+
+    <div style="margin-left:164px;border-left:2px solid rgba(16,185,129,0.3);padding-left:1rem;display:flex;flex-direction:column;gap:0.3rem">
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django</div>
+        <div style="opacity:0.4;text-align:center">1.</div>
+        <div style="opacity:0.7">Проверить JWT, извлечь userId инициатора</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">2.</div>
+        <div style="opacity:0.7"><code>disk.folder.add</code> — создать папку <em>/Согласования/[ID]</em> на общем диске</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">3.</div>
+        <div style="opacity:0.7"><code>disk.folder.uploadfile</code> — загрузить файлы в созданную папку, получить fileIds</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">4.</div>
+        <div style="opacity:0.7"><code>entity.item.add</code> — сохранить запрос со статусом COLLECTING</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">5.</div>
+        <div style="opacity:0.7"><code>imbot.message.add</code> — опубликовать сообщение с кнопками в чате (Bot Platform 2.0 keyboard)</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">6.</div>
+        <div style="opacity:0.7"><code>entity.item.update</code> — записать botMessageId обратно в запрос</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+      <div style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:6px;padding:0.4rem 0.6rem;text-align:center">Nuxt</div>
+      <div style="opacity:0.4;text-align:center">←</div>
+      <div style="opacity:0.7">200 OK → показать карточку запроса</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. Голосование (Bot Platform 2.0 webhook)</h3>
+  <div style="display:flex;flex-direction:column;gap:0.4rem;font-size:0.82rem">
+
+    <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+      <div style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);border-radius:6px;padding:0.4rem 0.6rem;text-align:center">B24 (кнопка)</div>
+      <div style="opacity:0.4;text-align:center">→</div>
+      <div style="opacity:0.7"><code>POST /api/vote/handle</code> — {userId, messageId, action: "approve"|"reject"}</div>
+    </div>
+
+    <div style="margin-left:164px;border-left:2px solid rgba(16,185,129,0.3);padding-left:1rem;display:flex;flex-direction:column;gap:0.3rem">
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django</div>
+        <div style="opacity:0.4;text-align:center">1.</div>
+        <div style="opacity:0.7">Найти запрос по messageId, проверить статус COLLECTING</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django</div>
+        <div style="opacity:0.4;text-align:center">2.</div>
+        <div style="opacity:0.7">Правила: инициатор не может голосовать, один голос на пользователя</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">3.</div>
+        <div style="opacity:0.7"><code>entity.item.add</code> (votes) — записать голос</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django</div>
+        <div style="opacity:0.4;text-align:center">4.</div>
+        <div style="opacity:0.7">Пересчитать статус: REJECT → мгновенно REJECTED; порог выполнен → APPROVED</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">5.</div>
+        <div style="opacity:0.7"><code>entity.item.update</code> — обновить статус и счётчики</div>
+      </div>
+      <div style="display:grid;grid-template-columns:140px 24px 1fr;align-items:center;gap:0.5rem">
+        <div style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:6px;padding:0.3rem 0.6rem;text-align:center;font-size:0.78rem">Django → B24</div>
+        <div style="opacity:0.4;text-align:center">6.</div>
+        <div style="opacity:0.7"><code>imbot.message.update</code> — обновить бот-сообщение (счётчики + убрать кнопки если завершено)</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="margin-top:1rem;padding:1rem;background:rgba(99,102,241,0.1);border-radius:8px;border-left:3px solid #6366f1;font-size:0.85rem">
+  <span class="label">Этот флоу выглядит правильно?</span>
+  <p style="margin:0.5rem 0 0">Если всё ок — перейдём к структуре Django-приложения и фронтенд-компонентам, затем запишем спеку.</p>
+</div>

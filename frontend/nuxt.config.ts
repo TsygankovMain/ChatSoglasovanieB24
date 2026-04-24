@@ -47,6 +47,18 @@ export default defineNuxtConfig({
     plugins: [
       tailwindcss()
     ],
+    optimizeDeps: {
+      include: [
+        'vue-i18n',
+        '@intlify/shared',
+        '@intlify/message-compiler',
+        '@intlify/core-base',
+        '@intlify/core',
+        '@intlify/utils/h3',
+        'ufo',
+        '@bitrix24/b24jssdk',
+      ]
+    },
     server: {
       proxy: {
         '/api': { target: process.env.SERVER_HOST || 'http://api-need_set:8000', changeOrigin: true }

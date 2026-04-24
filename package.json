@@ -4,6 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "mcp:install": "cd mcp-server && npm install",
+    "mcp:dev": "cd mcp-server && npm run dev",
+    "mcp:build": "cd mcp-server && npm run build",
+    "mcp:start": "cd mcp-server && npm start"
   },
   "dependencies": {
   },
