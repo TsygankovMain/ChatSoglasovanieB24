@@ -53,13 +53,25 @@ const thresholdOptions = computed(() => [
 ])
 
 function normalizeUser(user: B24SearchUser): PortalUser | null {
+  // Пропускаем ботов и неактивных пользователей
+  if (user.name?.includes('[bot]') || user.name?.includes('[BOT]')) {
+    return null
+  }
+
   const idRaw = user.id
   const id = String(idRaw ?? '').trim()
   if (!id) {
     return null
   }
 
-  const fio = String(user.name ?? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim()).trim() || id
+  let fio = String(user.name ?? '').trim()
+  if (!fio) {
+    const firstName = String(user.first_name ?? '').trim()
+    const lastName = String(user.last_name ?? '').trim()
+    fio = `${firstName} ${lastName}`.trim()
+  }
+  fio = fio || id
+
   return {
     id,
     fio,
@@ -96,7 +108,40 @@ function removeApprover(id: string) {
   approverIds.value = approverIds.value.filter(a => a !== id)
 }
 
-async function searchApprovers(query: string) {
+async function openUserSelectionDialog() {
+  try {
+    // Проверяем, доступен ли глобальный BX24 объект
+    const globalBX24 = (window as unknown as { BX24?: { selectUsers?: (callback: (users: Array<{ id: number | string; name: string }>) => void) => void } }).BX24
+    if (globalBX24?.selectUsers) {
+      globalBX24.selectUsers((users: Array<{ id: number | string; name: string }>) => {
+        if (Array.isArray(users)) {
+          users.forEach((user) => {
+            const normalizedUser: PortalUser = {
+              id: String(user.id),
+              fio: user.name,
+              workPosition: '',
+            }
+            addApprover(normalizedUser)
+          })
+        }
+      })
+    } else {
+      console.warn('BX24.selectUsers not available, using search interface')
+    }
+  } catch (error) {
+    console.error('Error opening user selection dialog:', error)
+  }
+}
+
+function addApprover(user: PortalUser) {
+  if (!approverIds.value.includes(user.id)) {
+    approverIds.value.push(user.id)
+    approverById.value.set(user.id, user)
+  }
+  approverInputValue.value = ''
+  approverOptions.value = []
+  approverSearchError.value = ''
+}
   const term = query.trim()
   if (term.length < 3) {
     approverOptions.value = []
@@ -111,11 +156,11 @@ async function searchApprovers(query: string) {
 
   try {
     const b24 = await ensureB24Frame()
-    const response = await b24.callMethod('im.search.user.list', {
+    const response = await b24.callMethod('user.search', {
       FIND: term,
-      BUSINESS: 'N',
-      OFFSET: 0,
-      LIMIT: 20,
+      SORT: 'ID',
+      ORDER: 'asc',
+      start: 0,
     })
 
     const payloadRaw = (typeof response === 'object' && response !== null && 'getData' in response && typeof (response as { getData?: () => unknown }).getData === 'function')
@@ -124,14 +169,22 @@ async function searchApprovers(query: string) {
     const payload = (typeof payloadRaw === 'object' && payloadRaw !== null)
       ? payloadRaw as B24SearchPayload
       : {}
-    const usersRaw = Array.isArray(payload.result) ? payload.result : []
-    const users = usersRaw
-      .map(normalizeUser)
-      .filter((user): user is PortalUser => user !== null)
+    // user.search может возвращать результаты напрямую как массив или в поле result
+    const usersRaw = Array.isArray(payload.result)
+      ? payload.result
+      : Array.isArray(payload as unknown[])
+        ? payload as unknown[]
+        : []
+
+    console.debug('User search response:', { response, payload, usersRaw, term })
 
     if (seq !== searchSeq) {
       return
     }
+
+    const users = usersRaw
+      .map(normalizeUser)
+      .filter((user): user is PortalUser => user !== null)
 
     users.forEach(user => approverById.value.set(user.id, user))
     approverOptions.value = users.filter(user => !approverIds.value.includes(user.id))
@@ -218,16 +271,25 @@ async function submit() {
       <label class="block text-xs font-medium text-b24-base-600 mb-0.5">
         {{ t('approval.form.approvers') }} <span class="text-b24-red-500">*</span>
       </label>
-      <div class="relative">
-        <B24Input
-          v-model="approverInputValue"
-          :placeholder="t('approval.form.approver_id_placeholder')"
-          class="flex-1"
-          @keydown.enter.prevent="addFirstApprover"
-        />
+      <div class="space-y-1">
+        <div class="flex gap-2">
+          <B24Input
+            v-model="approverInputValue"
+            :placeholder="t('approval.form.approver_id_placeholder')"
+            class="flex-1"
+            @keydown.enter.prevent="addFirstApprover"
+          />
+          <B24Button
+            size="sm"
+            color="secondary"
+            variant="outline"
+            label="Выбрать"
+            @click="openUserSelectionDialog"
+          />
+        </div>
         <div
           v-if="approverOptions.length > 0"
-          class="absolute z-10 mt-1 w-full max-h-40 overflow-auto border border-b24-base-200 rounded bg-white"
+          class="relative z-10 mt-1 w-full max-h-40 overflow-auto border border-b24-base-200 rounded bg-white"
         >
           <button
             v-for="user in approverOptions"
