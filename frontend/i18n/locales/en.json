@@ -39,6 +39,9 @@
         "crm": {
           "caption": "CRM..."
         },
+        "contextMenu": {
+          "caption": "Message context menu..."
+        },
         "serverSide": {
           "caption": "Server-side scripts..."
         },
@@ -73,6 +76,12 @@
           "alert": "Every employee login is displayed in the Event Log. You can always check who, when, and from which IP addresses logged into Bitrix24."
         }
       }
+    },
+    "context-menu": {
+      "seo": {
+        "title": "Create approval request"
+      },
+      "based_on_message": "Based on message #{id}"
     }
   },
   "uf": {
@@ -101,6 +110,7 @@
     }
   },
   "approval": {
+    "user_default": "User {id}",
     "tab": {
       "my": "My Requests",
       "incoming": "Incoming"
@@ -137,6 +147,9 @@
       "comment": "Comment",
       "comment_placeholder": "Describe the request...",
       "approvers": "Approvers",
+      "select_approvers_placeholder": "Select employees",
+      "loading_users": "Loading employees...",
+      "no_users_available": "No employees found",
       "approver_id_placeholder": "Type employee full name",
       "approver_search_hint": "Type at least 3 characters and pick a user from the list",
       "approver_search_loading": "Searching users...",
@@ -151,9 +164,31 @@
         "dialog_required": "Chat context was not found. Reopen the app from the target chat and try again.",
         "user_search_failed": "Failed to load users list",
         "generic": "Error creating request"
-      }
+      },
+      "warning": {
+        "bot_issue": "Request created, but messages to approvers were not fully delivered: {details}. Verify the bot is installed or notify approvers manually.",
+        "no_bot_message": "Request created, but the bot message to approvers was not published. Please verify the bot installation."
+      },
+      "remove_file": "Remove file"
     },
-    "empty": "No requests yet"
+    "empty": "No requests yet",
+    "card": {
+      "initiator": "Initiator",
+      "approvers": "Approvers"
+    },
+    "event": {
+      "log_title": "Activity log",
+      "empty": "No events yet",
+      "type": {
+        "created": "Created",
+        "vote": "Vote",
+        "status_changed": "Status changed",
+        "notify_approver": "Approver notified",
+        "notify_initiator": "Initiator notified",
+        "cancelled": "Cancelled",
+        "unknown": "Event"
+      }
+    }
   },
   "components": {
     "backendStatus": {

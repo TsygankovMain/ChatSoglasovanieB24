@@ -60,44 +60,25 @@ const steps = ref<Record<string, IStep>>({
       return sleepAction(1000)
     }
   },
-  // events: {
-  //   caption: t('page.install.step.events.caption'),
-  //   action: async () => {
-  //     /**
-  //      * Registering onAppInstall | onAppUninstall
-  //      */
-  //     await $b24.callBatch([
-  //       {
-  //         method: 'event.unbind',
-  //         params: {
-  //           event: 'ONAPPINSTALL',
-  //           handler: `${appUrl}/api/event/onAppInstall`
-  //         }
-  //       },
-  //       {
-  //         method: 'event.unbind',
-  //         params: {
-  //           event: 'ONAPPUNINSTALL',
-  //           handler: `${appUrl}/api/event/onAppUninstall`
-  //         }
-  //       },
-  //       {
-  //         method: 'event.bind',
-  //         params: {
-  //           event: 'ONAPPINSTALL',
-  //           handler: `${appUrl}/api/event/onAppInstall`
-  //         }
-  //       },
-  //       {
-  //         method: 'event.bind',
-  //         params: {
-  //           event: 'ONAPPUNINSTALL',
-  //           handler: `${appUrl}/api/event/onAppUninstall`
-  //         }
-  //       }
-  //     ])
-  //   }
-  // },
+  events: {
+    caption: t('page.install.step.events.caption'),
+    action: async () => {
+      // FE-P1-1: register ONAPPUNINSTALL so Bitrix24 calls our backend on
+      // app removal. The handler is idempotent: rebind clears any stale
+      // binding from a previous install.
+      const handler = `${appUrl}/api/event/onAppUninstall`
+      await $b24.callBatch([
+        {
+          method: 'event.unbind',
+          params: { event: 'ONAPPUNINSTALL', handler }
+        },
+        {
+          method: 'event.bind',
+          params: { event: 'ONAPPUNINSTALL', handler }
+        }
+      ])
+    }
+  },
   placement: {
     caption: t('page.install.step.placement.caption'),
     action: async () => {
@@ -153,47 +134,56 @@ const steps = ref<Record<string, IStep>>({
       await validatePlacementBinding(key)
     }
   },
-  userFields: {
-    caption: t('page.install.step.userFields.caption'),
+  contextMenu: {
+    caption: t('page.install.step.contextMenu.caption'),
     action: async () => {
-      const typeId = `some_type_${import.meta.dev ? 'dev' : 'prod'}`
-
-      const exists = (steps.value.init?.data?.userFieldTypeList as { USER_TYPE_ID: string }[]).some(item => item.USER_TYPE_ID === typeId)
+      const key = {
+        placement: 'IM_CONTEXT_MENU',
+        handler: `${appUrl}/handler/placement-im-context-menu`
+      }
+      const options = {
+        context: 'ALL',
+        role: 'USER',
+        extranet: 'N'
+      }
+      const exists = (steps.value.init?.data?.placementList as { placement: string, handler: string }[]).some(
+        item => item.placement === key.placement && item.handler === key.handler
+      )
       if (exists) {
         await $b24.callBatch([
           {
-            method: 'userfieldtype.update',
+            method: 'placement.unbind',
+            params: { PLACEMENT: key.placement, HANDLER: key.handler }
+          },
+          {
+            method: 'placement.bind',
             params: {
-              USER_TYPE_ID: typeId,
-              HANDLER: `${appUrl}/handler/uf.demo`,
-              TITLE: `[${import.meta.dev ? 'dev' : 'prod'}] Some Type`,
-              DESCRIPTION: `Some Description`,
-              OPTIONS: {
-                height: 105
-              }
+              PLACEMENT: key.placement,
+              HANDLER: key.handler,
+              TITLE: 'Согласовать',
+              OPTIONS: options
             }
           }
-        ], false)
-
+        ])
+        await validatePlacementBinding(key)
         return
       }
-
       await $b24.callBatch([
         {
-          method: 'userfieldtype.add',
+          method: 'placement.bind',
           params: {
-            USER_TYPE_ID: typeId,
-            HANDLER: `${appUrl}/handler/uf.demo`,
-            TITLE: `[${import.meta.dev ? 'dev' : 'prod'}] Some Type`,
-            DESCRIPTION: `Some Description`,
-            OPTIONS: {
-              height: 105
-            }
+            PLACEMENT: key.placement,
+            HANDLER: key.handler,
+            TITLE: 'Согласовать',
+            OPTIONS: options
           }
         }
-      ], false)
+      ])
+      await validatePlacementBinding(key)
     }
   },
+  // FE-P3-1: removed userFields/userfieldtype.* — left over from the
+  // template scaffolding, not used anywhere in the approval workflow.
   // crm: {
   //   caption: t('page.install.step.crm.caption'),
   //   action: async () => {
@@ -264,7 +254,6 @@ async function makeInit(): Promise<void> {
     const response = await $b24.callBatch({
       appInfo: { method: 'app.info' },
       profile: { method: 'profile' },
-      userFieldTypeList: { method: 'userfieldtype.list' },
       placementList: { method: 'placement.get' }
     })
 
@@ -284,12 +273,6 @@ async function makeInit(): Promise<void> {
         LAST_NAME?: string
         NAME?: string
       }
-      userFieldTypeList: {
-        USER_TYPE_ID: string
-        HANDLER: string
-        TITLE: string
-        DESCRIPTION: string
-      }[]
       placementList: {
         placement: string
         userId: number

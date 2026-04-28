@@ -6,7 +6,6 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 
 from .utils.decorators import auth_required, log_errors
 from .utils import AuthorizedRequest
-from .models import ApplicationInstallation
 
 from config import load_config, config
 from approvals.b24_client import ApprovalB24Client
@@ -18,6 +17,7 @@ __all__ = [
     "get_list",
     "install",
     "get_token",
+    "on_app_uninstall",
 ]
 
 config = load_config()
@@ -69,15 +69,6 @@ def get_list(request: AuthorizedRequest):
 def install(request: AuthorizedRequest):
     bitrix24_account = request.bitrix24_account
 
-    ApplicationInstallation.objects.update_or_create(
-        bitrix_24_account=bitrix24_account,
-        defaults={
-            "status": bitrix24_account.status,
-            "portal_license_family": "",
-            "application_token": bitrix24_account.application_token,
-        },
-    )
-
     import logging
     logger = logging.getLogger(__name__)
 
@@ -91,6 +82,7 @@ def install(request: AuthorizedRequest):
         steps["entity_storages"] = str(e)
 
     webhook_url = f"{config.app_base_url}/api/vote/handle"
+    bot_id = ""
     try:
         bot_id = b24.register_bot("Согласование", webhook_url)
         if bot_id:
@@ -100,10 +92,41 @@ def install(request: AuthorizedRequest):
         steps["bot"] = str(e)
 
     try:
+        if not bot_id:
+            raise RuntimeError("BOT_ID is empty")
+        command_id = b24.ensure_vote_command(bot_id, "approve", webhook_url, "APPROVE_COMMAND_ID")
+        steps["command_approve"] = f"ok, id={command_id}"
+    except Exception as e:
+        steps["command_approve"] = str(e)
+
+    try:
+        if not bot_id:
+            raise RuntimeError("BOT_ID is empty")
+        command_id = b24.ensure_vote_command(bot_id, "reject", webhook_url, "REJECT_COMMAND_ID")
+        steps["command_reject"] = f"ok, id={command_id}"
+    except Exception as e:
+        steps["command_reject"] = str(e)
+
+    try:
         b24.bind_placement("IM_TEXTAREA", f"{config.app_base_url}/")
         steps["placement"] = "ok"
     except Exception as e:
         steps["placement"] = str(e)
+
+    try:
+        b24.bind_placement(
+            "IM_CONTEXT_MENU",
+            f"{config.app_base_url}/handler/placement-im-context-menu",
+            title="Согласовать",
+            options={
+                "context": "ALL",
+                "role": "USER",
+                "extranet": "N",
+            },
+        )
+        steps["placement_context_menu"] = "ok"
+    except Exception as e:
+        steps["placement_context_menu"] = str(e)
 
     logger.info("Install steps: %s", steps)
     return JsonResponse({"message": "Installation successful", "steps": steps})
@@ -116,3 +139,20 @@ def install(request: AuthorizedRequest):
 @auth_required
 def get_token(request: AuthorizedRequest):
     return JsonResponse({"token": request.bitrix24_account.create_jwt_token()})
+
+
+@xframe_options_exempt
+@csrf_exempt
+@require_POST
+@log_errors("on_app_uninstall")
+def on_app_uninstall(request):
+    """Stateless ONAPPUNINSTALL acknowledgement.
+
+    Bitrix24 calls this endpoint when the app is uninstalled from a portal.
+    We have no per-portal state to clean up — entity-storage data lives
+    inside the portal itself and is removed there. We return 200 OK so the
+    event is considered delivered.
+    """
+    import logging
+    logging.getLogger(__name__).info("ONAPPUNINSTALL received")
+    return JsonResponse({"ok": True})

@@ -424,7 +424,21 @@ class ApprovalB24Client:
             self.set_app_option(option_name, command_id)
         return command_id
 
-    def bind_placement(self, placement: str, handler_url: str, title: str = "Согласование") -> None:
+    def bind_placement(
+        self,
+        placement: str,
+        handler_url: str,
+        title: str = "Согласование",
+        options: dict | None = None,
+    ) -> None:
+        """Bind (re-bind) a placement handler.
+
+        `options` is passed as-is to the OPTIONS field of placement.bind.
+        When omitted, sensible defaults for IM_TEXTAREA are used.
+
+        IM_CONTEXT_MENU only accepts context/role/extranet — do NOT pass
+        iconName/color/width/height for that placement type.
+        """
         # Rebind placement to keep options in sync after app updates.
         try:
             self.http.call("placement.unbind", {
@@ -434,11 +448,8 @@ class ApprovalB24Client:
             # First-install path naturally has nothing to unbind — log at debug only.
             logger.debug("[b24][placement.unbind] skipped placement=%s reason=%s", placement, exc)
 
-        result = self.http.call("placement.bind", {
-            "PLACEMENT": placement,
-            "HANDLER": handler_url,
-            "TITLE": title,
-            "OPTIONS": {
+        if options is None:
+            options = {
                 "iconName": "fa-check-circle",
                 "context": "ALL",
                 "role": "USER",
@@ -446,7 +457,13 @@ class ApprovalB24Client:
                 "color": "LIGHT_BLUE",
                 "width": "400",
                 "height": "300",
-            },
+            }
+
+        result = self.http.call("placement.bind", {
+            "PLACEMENT": placement,
+            "HANDLER": handler_url,
+            "TITLE": title,
+            "OPTIONS": options,
         })
         if result is False:
             raise RuntimeError(f"placement.bind returned false for {placement} — check placement type and OPTIONS")
