@@ -2,58 +2,34 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Frontend (Nuxt)",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "name": "ChatApprove - Frontend + Python (full stack)",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "--profile", "frontend", "--profile", "python", "--profile", "cloudpub", "up", "--build"],
+      "port": 3001
     },
     {
-      "name": "Backend API - Node",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 8000
+      "name": "ChatApprove - Frontend only",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "--profile", "frontend", "--profile", "cloudpub", "up", "--build"],
+      "port": 3001
     },
     {
-      "name": "MCP Server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": null
+      "name": "ChatApprove - Python API only",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "--profile", "python", "up", "--build"],
+      "port": 8002
     },
     {
-      "name": "Docker Compose - Frontend + PHP",
-      "runtimeExecutable": "docker-compose",
-      "runtimeArgs": ["--profile", "frontend,php,cloudpub", "up", "--build"],
-      "port": 3000
+      "name": "ChatApprove - Database only",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "up", "database"],
+      "port": 5433
     },
     {
-      "name": "Docker Compose - Frontend + Python",
-      "runtimeExecutable": "docker-compose",
-      "runtimeArgs": ["--profile", "frontend,python,cloudpub", "up", "--build"],
-      "port": 3000
-    },
-    {
-      "name": "Docker Compose - Frontend + Node",
-      "runtimeExecutable": "docker-compose",
-      "runtimeArgs": ["--profile", "frontend,node,cloudpub", "up", "--build"],
-      "port": 3000
-    },
-    {
-      "name": "Docker Compose - Frontend Only",
-      "runtimeExecutable": "docker-compose",
-      "runtimeArgs": ["--profile", "frontend,cloudpub", "up", "--build"],
-      "port": 3000
-    },
-    {
-      "name": "Python API",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["manage.py", "runserver", "0.0.0.0:8000"],
-      "port": 8000
-    },
-    {
-      "name": "Database - PostgreSQL",
-      "runtimeExecutable": "docker-compose",
-      "runtimeArgs": ["up", "database"],
-      "port": 5432
+      "name": "ChatApprove - Frontend + PHP",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "--profile", "frontend", "--profile", "php", "--profile", "cloudpub", "up", "--build"],
+      "port": 3001
     }
   ]
 }
