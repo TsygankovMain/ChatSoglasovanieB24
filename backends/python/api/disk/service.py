@@ -19,9 +19,20 @@ class DiskService:
 
     def _get_company_storage_id(self) -> str:
         """Return the ID of the company shared storage (ENTITY_TYPE='common')."""
-        result = self.client.call("disk.storage.getlist", {
-            "filter": {"ENTITY_TYPE": "common"},
-        })
+        try:
+            result = self.client.call("disk.storage.getlist", {
+                "filter": {"ENTITY_TYPE": "common"},
+            })
+        except RuntimeError as exc:
+            err_text = str(exc)
+            if "insufficient_scope" in err_text or "higher privileges" in err_text:
+                raise RuntimeError(
+                    "Disk API requires 'disk' scope. "
+                    "Go to Bitrix24 Developer Portal → app settings → add 'disk' to scopes, "
+                    "then reinstall the app to obtain a fresh token."
+                ) from exc
+            raise
+
         if isinstance(result, list) and result:
             storage_id = str(result[0].get("ID", ""))
             if storage_id:

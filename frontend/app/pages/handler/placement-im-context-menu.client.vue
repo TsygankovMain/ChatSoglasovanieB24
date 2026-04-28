@@ -14,6 +14,47 @@ let $b24: null | B24Frame = null
 const isInit = ref(false)
 const dialogId = ref('')
 const messageId = ref('')
+const prefillComment = ref('')
+
+// ── Message text fetch ─────────────────────────────────────────────────────
+
+/**
+ * Fetches the text of a specific message using im.dialog.messages.get
+ * (scope: im — available to any portal user with chat access).
+ *
+ * Strategy: request messages with LAST_ID = messageId+1 so the window
+ * includes exactly the target message; filter by ID to find it.
+ * Degrades gracefully — if anything fails the form opens without pre-fill.
+ */
+async function fetchMessageText(dId: string, mId: string): Promise<string> {
+  const numericId = parseInt(mId, 10)
+  if (!dId || !numericId) return ''
+
+  try {
+    const response = await $b24!.callMethod('im.dialog.messages.get', {
+      DIALOG_ID: dId,
+      LAST_ID: numericId + 1,
+      LIMIT: 5,
+    })
+
+    type ImMessage = { id: number | string; text?: string }
+    type ImResponse = { messages?: ImMessage[] }
+    const data = response.getData() as ImResponse
+
+    const found = (data.messages ?? []).find(
+      m => String(m.id) === String(numericId)
+    )
+    const text = found?.text?.trim() ?? ''
+    if (text) {
+      $logger.info('ContextMenuPlacementPage: message text fetched, length=%s', text.length)
+    }
+    return text
+  } catch (err) {
+    // Non-critical — log at warn so it's visible in dev but doesn't block the form.
+    $logger.warn('ContextMenuPlacementPage: failed to fetch message text', err)
+    return ''
+  }
+}
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
 
@@ -28,6 +69,9 @@ onMounted(async () => {
 
     page.title = t('page.context-menu.seo.title')
     await $b24.parent.setTitle(t('page.context-menu.seo.title'))
+
+    // Fetch message text in parallel with title update (non-blocking init).
+    prefillComment.value = await fetchMessageText(dialogId.value, messageId.value)
 
     isInit.value = true
   } catch (error) {
@@ -68,6 +112,7 @@ async function onCancel() {
       <div class="px-4 pb-4" :class="messageId ? '' : 'pt-4'">
         <LazyApprovalCreateForm
           :dialog-id="dialogId"
+          :prefill-comment="prefillComment"
           @created="onCreated"
           @cancel="onCancel"
         />
