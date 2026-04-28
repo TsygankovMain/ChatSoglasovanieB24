@@ -103,14 +103,13 @@ class DiskService:
     def create_folder(self, folder_name: str) -> str:
         """Create a per-request subfolder inside the 'Согласования' root folder.
 
-        Previously this called disk.folder.add without a parent `id`, which
-        always fails.  The correct flow is:
-          1. disk.storage.getlist → find company 'common' storage
-          2. disk.storage.addfolder(id=storage_id) → create/find 'Согласования'
-          3. disk.folder.add(id=root_folder_id)    → create per-request subfolder
+        Correct flow:
+          1. disk.storage.getlist      → find company 'common' storage
+          2. disk.storage.addfolder    → create/find 'Согласования' root folder
+          3. disk.folder.addsubfolder  → create per-request subfolder inside it
         """
         root_folder_id = self._ensure_root_folder()
-        result = self.client.call("disk.folder.add", {
+        result = self.client.call("disk.folder.addsubfolder", {
             "id": root_folder_id,
             "data": {"NAME": folder_name},
         })
