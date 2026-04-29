@@ -14,7 +14,7 @@ CMD ["sh", "-c", "pnpm install --frozen-lockfile \
 FROM node:20-alpine AS builder
 RUN apk add --no-cache openssl
 WORKDIR /app
-RUN corepack enable
+RUN npm install -g pnpm@9
 COPY .npmrc package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY . ./
@@ -25,5 +25,6 @@ FROM node:20-alpine AS production
 WORKDIR /app
 COPY --from=builder /app/.output ./
 COPY --from=builder /app/package*.json ./
-EXPOSE 80
+ENV PORT=3000
+EXPOSE 3000
 CMD ["node", "/app/server/index.mjs"]
