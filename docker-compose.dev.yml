@@ -1,0 +1,149 @@
+services:
+  # (~) Database
+  database:
+    image: postgres:17-alpine
+    container_name: ChatApproveDatabase
+    environment:
+      POSTGRES_DB: ${DB_NAME:-appdb}
+      POSTGRES_USER: ${DB_USER:-appuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-apppass}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./logs/postgres:/var/log/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-appuser} -d ${DB_NAME:-appdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal-net
+
+  # (~) Frontend
+  frontend:
+    profiles: [ "frontend" ]
+    container_name: ChatApproveFrontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-dev}
+    env_file: .env
+    environment:
+      NUXT_PUBLIC_APP_URL: ${VIRTUAL_HOST}
+      NUXT_PUBLIC_API_URL: ${VIRTUAL_HOST}
+      HTTP: frontend:3000
+    expose:
+      - '3000'
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+    networks:
+      - internal-net
+
+  # (~) Cloudpub - for frontend
+  cloudpub:
+    profiles: ["cloudpub"]
+    container_name: ChatApproveCloudpub
+    #image: cloudpub/cloudpub:latest
+    # for arm64 proc
+    image: cloudpub/cloudpub:latest-arm64
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TOKEN: ${CLOUDPUB_TOKEN}
+      HTTP: frontend:3000
+    command: run
+    depends_on:
+      - frontend
+    volumes:
+      - cloudpub-config:/home/cloudpub
+    networks:
+      - internal-net
+
+  # (~) API servers (selected via profile)
+  api-php:
+    profiles: ["php"]
+    container_name: ChatApproveApiPhp
+    build:
+      context: ./backends/php
+      dockerfile: docker/php-fpm/Dockerfile
+    env_file: .env
+    environment:
+      DB_HOST: database
+      NODE_ENV: ${NODE_ENV:-development}
+      NUXT_PUBLIC_API_URL: ${VIRTUAL_HOST}
+      BITRIX24_PHP_SDK_APPLICATION_CLIENT_ID: ${CLIENT_ID:-enter_your_b24_app_client_id}
+      BITRIX24_PHP_SDK_APPLICATION_CLIENT_SECRET: ${CLIENT_SECRET:-enter_your_b24_app_secret}
+      BITRIX24_PHP_SDK_APPLICATION_SCOPE: ${SCOPE:-enter_your_b24_app_scope}
+    expose:
+      - "8000"
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./backends/php/:/var/www
+      - ./logs/php:/var/log/php
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal-net
+
+  php-cli:
+    profiles: ["php", "php-cli"]
+    container_name: ChatApprovePhpCli
+    build:
+      context: ./backends/php
+      dockerfile: docker/php-cli/Dockerfile
+    env_file: .env
+    environment:
+      DB_HOST: database
+      NODE_ENV: ${NODE_ENV:-development}
+      NUXT_PUBLIC_API_URL: ${VIRTUAL_HOST}
+      BITRIX24_PHP_SDK_APPLICATION_CLIENT_ID: ${CLIENT_ID:-enter_your_b24_app_client_id}
+      BITRIX24_PHP_SDK_APPLICATION_CLIENT_SECRET: ${CLIENT_SECRET:-enter_your_b24_app_secret}
+      BITRIX24_PHP_SDK_APPLICATION_SCOPE: ${SCOPE:-enter_your_b24_app_scope}
+    volumes:
+      - ./backends/php/:/var/www
+      - ./logs/php:/var/log/php
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - internal-net
+    stdin_open: true
+    tty: true
+
+  api-python:
+    profiles: ["python"]
+    container_name: ChatApproveApiPython
+    build:
+      context: ./backends/python
+      dockerfile: api/Dockerfile
+      target: ${BUILD_TARGET:-dev}
+    env_file: .env
+    environment:
+      PORT: 8000
+      NUXT_PUBLIC_API_URL: ${VIRTUAL_HOST}
+    expose:
+      - "8000"
+    ports:
+      - "8002:8000"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    volumes:
+      - ./backends/python/api:/var/www/api
+      - ./logs/python:/var/log/python
+    networks:
+      - internal-net
+
+networks:
+  internal-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  cloudpub-config:
