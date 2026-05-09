@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import base64
 import json
 from datetime import datetime, timezone
 import logging
+from pathlib import Path
 
 from core.b24_entity import (
     B24HttpClient,
@@ -343,6 +345,61 @@ class ApprovalB24Client:
 
     # ── Install helpers ────────────────────────────────────────────────────
 
+    def _load_bot_avatar_base64(self) -> str:
+        """Load bot avatar from backend assets and return base64 payload."""
+        avatar_path = Path(__file__).resolve().parent.parent / "assets" / "bot-avatar-200.png"
+        try:
+            raw = avatar_path.read_bytes()
+        except OSError as exc:
+            logger.warning("[b24][bot.avatar] file read failed path=%s reason=%s", avatar_path, exc)
+            return ""
+        return base64.b64encode(raw).decode("ascii")
+
+    def _update_bot_avatar(self, bot_id: str, bot_name: str) -> None:
+        """Set bot avatar after registration, with v2 -> legacy fallback."""
+        avatar_b64 = self._load_bot_avatar_base64()
+        if not avatar_b64:
+            return
+
+        try:
+            numeric_bot_id = int(bot_id)
+        except (TypeError, ValueError):
+            logger.warning("[b24][bot.avatar] invalid bot_id=%s", bot_id)
+            return
+
+        try:
+            self.http.call("imbot.v2.Bot.update", {
+                "botId": numeric_bot_id,
+                "fields": {
+                    "properties": {
+                        "name": bot_name,
+                        "color": "GREEN",
+                        "avatar": avatar_b64,
+                    },
+                },
+            })
+            logger.info("[b24][bot.avatar] updated via imbot.v2.Bot.update bot_id=%s", numeric_bot_id)
+            return
+        except Exception as exc:
+            logger.warning("[b24][bot.avatar] v2 update failed bot_id=%s reason=%s", numeric_bot_id, exc)
+
+        # Fallback for old portals where v2 methods are unavailable.
+        try:
+            self.http.call("imbot.update", {
+                "BOT_ID": numeric_bot_id,
+                "FIELDS": {
+                    "PROPERTIES": {
+                        "NAME": bot_name,
+                        "LAST_NAME": "",
+                        "COLOR": "GREEN",
+                        "PERSONAL_PHOTO": ["bot-avatar-200.png", avatar_b64],
+                    },
+                },
+            })
+            logger.info("[b24][bot.avatar] updated via imbot.update bot_id=%s", numeric_bot_id)
+        except Exception as exc:
+            logger.warning("[b24][bot.avatar] legacy update failed bot_id=%s reason=%s", numeric_bot_id, exc)
+
     def register_bot(self, bot_name: str, webhook_url: str) -> str:
         result = self.http.call("imbot.register", {
             "CODE": "approval_bot",
@@ -356,9 +413,16 @@ class ApprovalB24Client:
                 "COLOR": "GREEN",
             },
         })
+        bot_id = ""
         if isinstance(result, dict):
-            return str(result.get("BOT_ID", result.get("ID", "")))
-        return str(result)
+            bot_id = str(result.get("BOT_ID", result.get("ID", "")))
+        else:
+            bot_id = str(result)
+
+        if bot_id:
+            self._update_bot_avatar(bot_id, bot_name)
+
+        return bot_id
 
     def register_vote_command(self, bot_id: str, command: str, handler_url: str) -> str:
         command_config = APPROVAL_COMMANDS[command]
