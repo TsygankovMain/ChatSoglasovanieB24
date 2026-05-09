@@ -272,9 +272,9 @@ class ApprovalService:
 
         # Entity storages are ensured in __init__ via app.option flag — no need to recreate.
 
-        deduped_approvers = [uid for uid in self._dedupe_user_ids(approver_ids) if uid != str(initiator_id)]
+        deduped_approvers = self._dedupe_user_ids(approver_ids)
         if not deduped_approvers:
-            raise RuntimeError("Инициатор не может быть единственным согласующим. Выберите другого сотрудника.")
+            raise RuntimeError("Добавьте хотя бы одного согласующего.")
 
         # 2. Save request to Entity Storage
         request_id = self.b24.create_request_item(

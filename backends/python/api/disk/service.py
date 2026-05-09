@@ -135,6 +135,16 @@ class DiskService:
         })
         return result if isinstance(result, dict) else {"ID": str(result)}
 
+    def _absolute_portal_url(self, url: str) -> str:
+        value = str(url or "").strip()
+        if not value:
+            return ""
+        if value.startswith(("https://", "http://")):
+            return value
+        if value.startswith("/"):
+            return f"https://{self.client.account.domain_url}{value}"
+        return value
+
     def get_folder_files(self, folder_id: str) -> list[dict]:
         """Return [{id, name, url}] for every file in the given folder.
 
@@ -157,10 +167,15 @@ class DiskService:
                     continue
                 if str(item.get("TYPE", "")).lower() != "file":
                     continue
+                # Prefer DETAIL_URL so user opens the file in Bitrix24 UI
+                # instead of forcing browser download from DOWNLOAD_URL.
+                view_url = self._absolute_portal_url(str(item.get("DETAIL_URL", "")))
+                if not view_url:
+                    view_url = self._absolute_portal_url(str(item.get("DOWNLOAD_URL", "")))
                 files.append({
                     "id": str(item.get("ID", "")),
                     "name": str(item.get("NAME", "")),
-                    "url": str(item.get("DOWNLOAD_URL", "") or item.get("DETAIL_URL", "")),
+                    "url": view_url,
                 })
         logger.debug("[disk] get_folder_files folder_id=%s count=%s", folder_id, len(files))
         return files
@@ -168,5 +183,8 @@ class DiskService:
     def get_file_url(self, file_id: str) -> str:
         result = self.client.call("disk.file.get", {"id": file_id})
         if isinstance(result, dict):
-            return result.get("DOWNLOAD_URL", "")
+            return (
+                self._absolute_portal_url(str(result.get("DETAIL_URL", "")))
+                or self._absolute_portal_url(str(result.get("DOWNLOAD_URL", "")))
+            )
         return ""
