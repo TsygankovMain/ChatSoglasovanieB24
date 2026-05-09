@@ -77,6 +77,10 @@ export default defineNuxtConfig({
     strategy: 'no_prefix',
     langDir: 'locales',
     locales: contentLocales,
-    defaultLocale: 'en'
+    defaultLocale: 'en',
+    // Грузить только активную локаль. После iframe-handshake выставляем язык
+    // из Bitrix24 (см. useAppInit.initLang). Без lazy все 19 файлов локалей
+    // попадают в initial bundle (≈ +100–200 КБ JS) и замедляют cold-start.
+    lazy: true
   }
 })

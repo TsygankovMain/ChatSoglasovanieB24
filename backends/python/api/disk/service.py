@@ -36,7 +36,7 @@ class DiskService:
         if isinstance(result, list) and result:
             storage_id = str(result[0].get("ID", ""))
             if storage_id:
-                logger.debug("[disk] company storage_id=%s", storage_id)
+                logger.info("[disk] company storage_id=%s", storage_id)
                 return storage_id
         raise RuntimeError(
             "Company shared storage not found: "
@@ -66,25 +66,32 @@ class DiskService:
             if "DISK_OBJ_22000" not in str(exc):
                 raise
             # Folder already exists — locate it among storage root children.
-            logger.debug(
+            logger.info(
                 "[disk] root folder '%s' already exists in storage %s, searching…",
                 ROOT_FOLDER_NAME, storage_id,
             )
 
         children = self.client.call("disk.storage.getchildren", {"id": storage_id})
         if isinstance(children, list):
+            logger.info(
+                "[disk] getchildren returned %s items for storage_id=%s",
+                len(children), storage_id,
+            )
             for item in children:
-                if (
-                    isinstance(item, dict)
-                    and item.get("NAME") == ROOT_FOLDER_NAME
-                    and item.get("TYPE") == "folder"
-                ):
-                    folder_id = str(item.get("ID", ""))
+                if not isinstance(item, dict):
+                    continue
+                item_name = item.get("NAME", "")
+                item_type = str(item.get("TYPE", "")).lower()
+                item_id = str(item.get("ID", ""))
+                logger.debug("[disk] getchildren item name=%r type=%r id=%s", item_name, item_type, item_id)
+                if item_name == ROOT_FOLDER_NAME and item_type == "folder":
                     logger.info(
                         "[disk] found existing root folder '%s' folder_id=%s",
-                        ROOT_FOLDER_NAME, folder_id,
+                        ROOT_FOLDER_NAME, item_id,
                     )
-                    return folder_id
+                    return item_id
+        else:
+            logger.warning("[disk] getchildren returned non-list type=%r", type(children).__name__)
 
         raise RuntimeError(
             f"Root folder '{ROOT_FOLDER_NAME}' already exists in company storage "
@@ -127,6 +134,36 @@ class DiskService:
             "fileContent": [filename, encoded],
         })
         return result if isinstance(result, dict) else {"ID": str(result)}
+
+    def get_folder_files(self, folder_id: str) -> list[dict]:
+        """Return [{id, name, url}] for every file in the given folder.
+
+        Uses a single disk.folder.getchildren call — more efficient than
+        calling disk.file.get for each file ID individually.
+        Returns an empty list on any error (non-critical, degrades gracefully).
+        """
+        if not folder_id:
+            return []
+        try:
+            children = self.client.call("disk.folder.getchildren", {"id": folder_id})
+        except RuntimeError:
+            logger.warning("[disk] get_folder_files failed for folder_id=%s", folder_id)
+            return []
+
+        files = []
+        if isinstance(children, list):
+            for item in children:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get("TYPE", "")).lower() != "file":
+                    continue
+                files.append({
+                    "id": str(item.get("ID", "")),
+                    "name": str(item.get("NAME", "")),
+                    "url": str(item.get("DOWNLOAD_URL", "") or item.get("DETAIL_URL", "")),
+                })
+        logger.debug("[disk] get_folder_files folder_id=%s count=%s", folder_id, len(files))
+        return files
 
     def get_file_url(self, file_id: str) -> str:
         result = self.client.call("disk.file.get", {"id": file_id})

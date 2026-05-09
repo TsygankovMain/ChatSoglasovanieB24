@@ -12,7 +12,6 @@ const { $logger, initApp, processErrorGlobal } = useAppInit('IndexPage')
 const { $initializeB24Frame } = useNuxtApp()
 let $b24: null | B24Frame = null
 
-const api = useApiStore()
 const approval = useApproval()
 const userStore = useUserStore()
 
@@ -87,26 +86,29 @@ onMounted(async () => {
     $b24 = await $initializeB24Frame()
     await initApp($b24, localesI18n, setLocale)
 
-    await $b24.parent.setTitle(t('page.index.seo.title'))
-    await fitWindow()
-
+    // Эти три вызова не зависят друг от друга — параллелим, чтобы
+    // не делать 3 IPC последовательно (≈ -200..400 мс на холодный запуск).
+    // setTitle/fitWindow — IPC к Bitrix24-родителю; placement.options — sync.
     const opts = $b24.placement?.options ?? {}
     placementOptions.value = opts
     dialogId.value = opts?.dialogId ?? opts?.DIALOG_ID ?? ''
 
-    try {
-      await api.checkHealth()
-      isBackendUnavailable.value = false
-    } catch (error) {
-      isBackendUnavailable.value = true
-      $logger.error('Backend is unavailable', error)
-    }
-
     isInit.value = true
-    if (!isInChat.value && !isBackendUnavailable.value) {
-      await loadTab()
-    }
-    await fitWindow()
+
+    // Грузим список параллельно с заголовком/подгонкой окна. Если backend
+    // недоступен, ошибка вылетит из approval.list и мы её отметим — тогда
+    // отдельный /api/health round-trip не нужен.
+    const titleP = $b24.parent.setTitle(t('page.index.seo.title'))
+                       .catch(error => $logger.warn('setTitle failed', error))
+    const fitP = fitWindow()
+    const dataP = (!isInChat.value)
+      ? loadTab().catch(error => {
+          isBackendUnavailable.value = true
+          $logger.error('Initial list load failed — assuming backend unavailable', error)
+        })
+      : Promise.resolve()
+
+    await Promise.all([titleP, fitP, dataP])
   } catch (error) {
     processErrorGlobal(error)
   } finally {
@@ -175,11 +177,14 @@ watch(showCreateForm, async () => {
         {{ { dialogId, placementOptions } }}
       </ProsePre>
 
+      <!-- LazyApprovalCreateForm: компонент с тяжёлыми зависимостями
+           (B24Select multi-filter, B24Textarea, callListMethod user.get).
+           Без Lazy он попадает в основной чанк и замедляет первый рендер. -->
       <B24Card v-if="shouldShowCreateForm" :class="isInChat ? 'mb-2' : 'mb-4'">
         <template v-if="!isInChat" #header>
           <ProseH2>{{ t('approval.form.title') }}</ProseH2>
         </template>
-        <ApprovalCreateForm
+        <LazyApprovalCreateForm
           :dialog-id="dialogId"
           @created="onCreated"
           @cancel="onCancelCreate"

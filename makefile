@@ -1,4 +1,4 @@
-.PHONY: dev-front dev-php dev-python dev-node prod-php prod-python prod-node status ps down down-all logs logs-nginxproxy clean composer-install composer-update composer-dumpautoload composer db-create db-migrate db-migrate-create db-schema-update db-schema-validate
+.PHONY: dev-front dev-php dev-python prod-php prod-python status ps down down-all logs logs-nginxproxy clean composer-install composer-update composer-dumpautoload composer db-create db-migrate db-migrate-create db-schema-update db-schema-validate
 
 # Variables
 DOCKER_COMPOSE = docker compose
@@ -96,11 +96,6 @@ dev-python:
 	@echo "Starting dev python"
 	COMPOSE_PROFILES=frontend,python,cloudpub docker compose --env-file .env up --build
 
-## NodeJs
-dev-node:
-	@echo "Starting dev node"
-	COMPOSE_PROFILES=frontend,node,cloudpub docker compose --env-file .env up --build
-
 # Production
 prod-php:
 	@echo "Starting prod php environment"
@@ -109,10 +104,6 @@ prod-php:
 prod-python:
 	@echo "Starting prod python environment"
 	COMPOSE_PROFILES=python FRONTEND_TARGET=production docker compose up --build -d
-
-prod-node:
-	@echo "Starting prod node environment"
-	COMPOSE_PROFILES=node FRONTEND_TARGET=production docker compose up --build -d
 
 # Utils
 status:

@@ -27,7 +27,7 @@ const getError = computed(() => {
   return props?.error
 })
 
-console.log(props?.error.message)
+if (import.meta.dev) console.log(props?.error.message)
 </script>
 
 <template>

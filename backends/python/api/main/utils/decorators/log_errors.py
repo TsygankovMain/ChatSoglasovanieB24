@@ -4,6 +4,8 @@ from http import HTTPStatus
 
 from django.http import JsonResponse
 
+logger = logging.getLogger(__name__)
+
 
 def log_errors(message: str):
     def inner(func):
@@ -12,7 +14,7 @@ def log_errors(message: str):
             try:
                 response = func(*args, **kwargs)
             except Exception as exc:
-                logging.error(message + f", args={args}, kwargs={kwargs}" + ": " + str(exc))
+                logger.exception("%s failed: %s", message, str(exc))
                 return JsonResponse({"error": str(exc)}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
             else:
                 return response

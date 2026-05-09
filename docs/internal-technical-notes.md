@@ -113,8 +113,9 @@
 ### 10.3 `B24 imbot.message.add: Incorrect keyboard params`
 
 1. Использовать keyboard только с валидными кнопками (`TEXT` + `COMMAND`/`ACTION`/`LINK`).
-2. Для `COMMAND` передавать `COMMAND_PARAMS` (минимум `"{}"`).
+2. Для `COMMAND` передавать `COMMAND_PARAMS` с `request_id`.
 3. В backend включен fallback отправки: сначала `KEYBOARD: { BUTTONS: [...] }`, при ошибке повтор с `KEYBOARD: [...]`.
+4. Команды `approve` и `reject` должны быть зарегистрированы через `imbot.command.register`; кнопки вызывают `ONIMCOMMANDADD`, а не `ONIMBOTMESSAGEADD`.
 
 ### 10.4 `ENTITY` создаётся, но `PROPERTY_VALUES` пустые
 
@@ -123,3 +124,9 @@
    - `appr_requests`: 10 полей (`INITIATOR_ID`, `APPROVER_IDS`, `STATUS`, и т.д.)
    - `approval_votes`: 5 полей (`REQUEST_ID`, `USER_ID`, `DECISION`, и т.д.)
 3. Проверка: `entity.item.property.get` должен возвращать эти коды.
+
+### 10.5 Кнопки бота не запускают голосование
+
+1. Переустановить приложение и проверить install steps: `command_approve=ok`, `command_reject=ok`.
+2. `/api/vote/handle` должен получать событие `ONIMCOMMANDADD`.
+3. Обработчик ищет request сначала по `COMMAND_PARAMS.request_id`, затем по `BOT_MESSAGE_ID`.

@@ -64,6 +64,10 @@ def _format_request(item: dict) -> dict:
         file_ids = json.loads(props.get("FILE_IDS", "[]"))
     except (json.JSONDecodeError, TypeError):
         file_ids = []
+    try:
+        file_names = json.loads(props.get("FILE_NAMES", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        file_names = []
     bot_message_ids = _parse_json_list(props.get("BOT_MESSAGE_ID", ""))
     bot_message_map = _parse_json_dict(props.get("BOT_MESSAGE_MAP", ""))
     return {
@@ -79,6 +83,7 @@ def _format_request(item: dict) -> dict:
         "bot_message_map": bot_message_map,
         "disk_folder_id": props.get("DISK_FOLDER_ID", ""),
         "file_ids": [str(v) for v in file_ids],
+        "file_names": [str(v) for v in file_names],
         "created_at": props.get("CREATED_AT", ""),
     }
 
@@ -185,6 +190,21 @@ class ApprovalService:
         user_ids.update([str(e.get("user_id", "")) for e in events])
         return self.b24.get_user_names([uid for uid in user_ids if uid])
 
+    def _get_request_files(self, request_data: dict) -> list[dict]:
+        """Fetch [{id, name, url}] for all files attached to this request.
+
+        Uses disk.folder.getchildren (one call) when disk_folder_id is set.
+        Falls back to file_names-only list (no URL) for old requests that
+        pre-date FILE_NAMES storage.
+        """
+        disk_folder_id = request_data.get("disk_folder_id", "")
+        if disk_folder_id:
+            disk_files = self._disk.get_folder_files(disk_folder_id)
+            if disk_files:
+                return disk_files
+        # Fallback: use stored names without URLs (pre-migration data)
+        return [{"id": "", "name": n, "url": ""} for n in request_data.get("file_names", [])]
+
     def _compose_request_payload(self, item: dict) -> dict:
         request_data = _format_request(item)
         request_id = request_data["id"]
@@ -209,6 +229,8 @@ class ApprovalService:
         }
         request_data["votes"] = votes
         request_data["events"] = events
+        # Populate files with download URLs for the frontend
+        request_data["files"] = self._get_request_files(request_data)
         return request_data
 
     def _build_bot_message_targets(self, request_data: dict) -> tuple[list[str], dict[str, str]]:
@@ -276,6 +298,7 @@ class ApprovalService:
             self.b24.update_request_item(request_id, {
                 "DISK_FOLDER_ID": disk_folder_id,
                 "FILE_IDS": json.dumps(file_ids),
+                "FILE_NAMES": json.dumps(file_names),
             })
 
         # 3. Publish bot messages to each approver
@@ -283,6 +306,12 @@ class ApprovalService:
         bot_message_ids: list[str] = []
         bot_message_map: dict[str, str] = {}
         bot_issue = ""
+
+        # Fetch fresh file URLs right after upload — avoids extra disk API
+        # calls later and ensures the initial bot message has clickable links.
+        disk_files: list[dict] = []
+        if disk_folder_id:
+            disk_files = self._disk.get_folder_files(disk_folder_id)
 
         if bot_id:
             logger.info(
@@ -305,6 +334,7 @@ class ApprovalService:
                 user_names=user_names,
                 status="collecting",
                 last_action_text="Запрос отправлен согласующим",
+                files=disk_files or None,
             )
 
             failed_details: list[str] = []
@@ -516,6 +546,7 @@ class ApprovalService:
         if bot_id and bot_message_ids:
             voter_name = user_names.get(str(user_id), f"Пользователь {user_id}")
             decision_text = "одобрил" if decision == "approve" else "отклонил"
+            vote_disk_files = self._get_request_files(request_data)
             message_text = build_approval_message(
                 request_id=request_id,
                 comment=request_data["comment"],
@@ -523,13 +554,14 @@ class ApprovalService:
                     request_data["initiator_id"],
                     f"Пользователь {request_data['initiator_id']}",
                 ),
-                file_names=request_data.get("file_ids", []),
+                file_names=request_data.get("file_names", []),
                 threshold_type=request_data["threshold_type"],
                 votes=all_votes_raw,
                 approver_ids=request_data["approver_ids"],
                 user_names=user_names,
                 status=new_status,
                 last_action_text=f"{voter_name} {decision_text} запрос",
+                files=vote_disk_files or None,
             )
             _, bot_message_map = self._build_bot_message_targets(request_data)
             owner_by_message_id = {
@@ -630,6 +662,7 @@ class ApprovalService:
                 request_data["initiator_id"],
                 *request_data["approver_ids"],
             ])
+            cancel_disk_files = self._get_request_files(request_data)
             message_text = build_approval_message(
                 request_id=request_id,
                 comment=request_data["comment"],
@@ -637,13 +670,14 @@ class ApprovalService:
                     request_data["initiator_id"],
                     f"Пользователь {request_data['initiator_id']}",
                 ),
-                file_names=request_data.get("file_ids", []),
+                file_names=request_data.get("file_names", []),
                 threshold_type=request_data["threshold_type"],
                 votes=votes,
                 approver_ids=request_data["approver_ids"],
                 user_names=user_names,
                 status="cancelled",
                 last_action_text="Запрос отменен инициатором",
+                files=cancel_disk_files or None,
             )
             for bot_message_id in bot_message_ids:
                 self.b24.update_bot_message(bot_id, bot_message_id, message_text, empty_keyboard())

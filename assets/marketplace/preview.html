@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <title>Предпросмотр дизайн-ассетов — Согласование в чате</title>
+  <style>
+    :root {
+      --brand: #2FC7F7;
+      --brand-dark: #1FA7D7;
+      --green: #37BB72;
+      --red: #FF5752;
+      --bg: #F4F6F8;
+      --card: #FFFFFF;
+      --text: #0A2540;
+      --muted: #5A6B7B;
+      --border: #E5EBF0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin: 32px 0 12px; font-size: 20px; }
+    p.lead { margin: 0 0 32px; color: var(--muted); }
+    section {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 12px rgba(10, 37, 64, .06);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      align-items: start;
+    }
+    .asset {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--bg);
+      border-radius: 12px;
+    }
+    .asset img, .asset object {
+      max-width: 100%;
+      height: auto;
+    }
+    .asset h3 { margin: 0; font-size: 14px; }
+    .asset code {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--card);
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .swatches { display: flex; gap: 12px; flex-wrap: wrap; }
+    .swatch {
+      width: 100px;
+      height: 100px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 8px;
+      color: #fff;
+      font-size: 11px;
+      box-shadow: 0 2px 6px rgba(10, 37, 64, .12);
+    }
+    .swatch.light { color: var(--text); }
+    .checker {
+      background-image:
+        linear-gradient(45deg, #d8d8d8 25%, transparent 25%),
+        linear-gradient(-45deg, #d8d8d8 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #d8d8d8 75%),
+        linear-gradient(-45deg, transparent 75%, #d8d8d8 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      padding: 16px;
+      border-radius: 12px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .small { font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <h1>Дизайн-ассеты для Битрикс24 Маркетплейс</h1>
+  <p class="lead">Приложение «Согласование в чате» · версия 1.0 · апрель 2026.<br>
+     SVG-исходники в <code>assets/marketplace/*.svg</code> — масштабируются без потерь, перед загрузкой
+     конвертировать в PNG (например: <code>rsvg-convert -w 512 icon-marketplace-512.svg -o icon-marketplace-512.png</code>).</p>
+
+  <section>
+    <h2>1. Бренд-палитра</h2>
+    <div class="swatches">
+      <div class="swatch" style="background:#2FC7F7"><strong>#2FC7F7</strong><br>brand</div>
+      <div class="swatch" style="background:#1FA7D7"><strong>#1FA7D7</strong><br>brand-dark</div>
+      <div class="swatch" style="background:#37BB72"><strong>#37BB72</strong><br>success</div>
+      <div class="swatch" style="background:#FF5752"><strong>#FF5752</strong><br>danger</div>
+      <div class="swatch" style="background:#B3B7BC"><strong>#B3B7BC</strong><br>icon-inactive</div>
+      <div class="swatch light" style="background:#F4F6F8"><strong>#F4F6F8</strong><br>bg</div>
+      <div class="swatch light" style="background:#FFFFFF;border:1px solid #ddd"><strong>#FFFFFF</strong><br>card</div>
+      <div class="swatch" style="background:#0A2540"><strong>#0A2540</strong><br>text</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Иконки</h2>
+    <div class="grid">
+
+      <div class="asset">
+        <h3>Иконка для каталога Маркетплейса</h3>
+        <object type="image/svg+xml" data="icon-marketplace-512.svg" width="240" height="240" aria-label="Иконка приложения 512×512"></object>
+        <code>icon-marketplace-512.svg → 512×512 PNG</code>
+        <span class="small">Не прозрачный фон. Регламент Маркетплейса.</span>
+      </div>
+
+      <div class="asset">
+        <h3>Иконка IM_TEXTAREA (inactive + active)</h3>
+        <div class="checker">
+          <object type="image/svg+xml" data="icon-textarea-108x66.svg" width="216" height="132" aria-label="Иконка над полем ввода"></object>
+        </div>
+        <code>icon-textarea-108x66.svg → 108×66 PNG, прозрачный фон</code>
+        <span class="small">Левая половина — inactive #B3B7BC, правая — active #2FC7F7. Передаётся в base64 через <code>ICON_FILE</code>.</span>
+      </div>
+
+      <div class="asset">
+        <h3>Аватар бота</h3>
+        <object type="image/svg+xml" data="bot-avatar-200.svg" width="200" height="200" aria-label="Аватар бота"></object>
+        <code>bot-avatar-200.svg → 200×200 PNG</code>
+        <span class="small">Передаётся в <code>imbot.register</code> как <code>PROPERTIES.PERSONAL_PHOTO</code> в base64.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Промо-баннер</h2>
+    <div class="asset" style="grid-column: 1 / -1;">
+      <object type="image/svg+xml" data="promo-banner-1920x800.svg" width="100%" style="max-width:1280px" aria-label="Промо-баннер"></object>
+      <code>promo-banner-1920x800.svg</code>
+      <span class="small">Кадрируется под 1200×630 (OG для соцсетей) и под 1080×1080 (квадрат для Reels-cover).</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Микро-копи скриншотов</h2>
+    <table>
+      <thead><tr><th>Скрин</th><th>Подпись</th><th>Состояние</th></tr></thead>
+      <tbody>
+        <tr><td>1. Иконка над полем ввода</td><td>Один клик в любом чате — и запрос ушёл</td><td>hover</td></tr>
+        <tr><td>2. Форма создания</td><td>Комментарий, согласующие, файлы — за 30 секунд</td><td>3 согласующих, 1 PDF, правило «единогласно»</td></tr>
+        <tr><td>3. Сообщение бота</td><td>Все согласующие видят кнопки прямо в Битрикс24-чате</td><td>2 кнопки, эмодзи реакций</td></tr>
+        <tr><td>4. Карточка collecting</td><td>Счётчики и список голосующих обновляются после каждого голоса</td><td>2 одобрено, 1 ожидает</td></tr>
+        <tr><td>5. Карточка approved</td><td>Финальный статус, история и аудит — в одном экране</td><td>зелёный статус, история голосов</td></tr>
+        <tr><td>6. Мастер установки</td><td>Установка за 1 минуту — мастер сам всё настроит</td><td>3/4 шага</td></tr>
+        <tr><td>7. Вкладка «Входящие»</td><td>Не теряйте запросы, ожидающие вашего согласования</td><td>3 запроса с разными статусами</td></tr>
+        <tr><td>8. Bitrix24 Disk</td><td>Файлы согласования автоматически попадают на Диск</td><td>дерево папок</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>5. Что отдать в Битрикс24</h2>
+    <table>
+      <thead><tr><th>Файл</th><th>Размер</th><th>Назначение</th></tr></thead>
+      <tbody>
+        <tr><td>icon-marketplace-512.png</td><td>512×512 PNG</td><td>Иконка карточки решения</td></tr>
+        <tr><td>icon-marketplace-1024.png</td><td>1024×1024 PNG</td><td>Архив @2x</td></tr>
+        <tr><td>icon-textarea-108x66.png</td><td>108×66 PNG, прозрачный фон</td><td><code>ICON_FILE</code> в <code>imbot.app.update</code></td></tr>
+        <tr><td>bot-avatar-200.png</td><td>200×200 PNG</td><td><code>PERSONAL_PHOTO</code> в <code>imbot.register</code></td></tr>
+        <tr><td>screenshot-{01..08}.png</td><td>1280×720 PNG</td><td>Скриншоты в карточке</td></tr>
+        <tr><td>promo-banner-1920x800.png</td><td>1920×800 PNG</td><td>Лендинг и подборки</td></tr>
+        <tr><td>promo-og-1200x630.png</td><td>1200×630 PNG</td><td>OG для соцсетей</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="small">Подробнее о требованиях и пайплайне — см. <code>docs/ru/marketplace/visuals-brief.md</code>.</p>
+
+</body>
+</html>

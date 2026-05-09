@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-flight runs for the same ref/pr — saves CI minutes on rapid pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-tests:
+    name: Python backend (lint + unit tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backends/python/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backends/python/api/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile-check (catch syntax errors fast)
+        run: |
+          python -m compileall -q .
+
+      - name: Run unit tests
+        env:
+          DJANGO_SETTINGS_MODULE: settings
+          BUILD_TARGET: dev
+          VIRTUAL_HOST: https://test.example.com
+          JWT_SECRET: ci-secret-do-not-use-in-prod-32bytes
+          PYTHONPATH: ${{ github.workspace }}/backends/python/api
+        run: |
+          python -m unittest discover -s tests -v
+
+  frontend-lint:
+    name: Frontend (lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # No package-lock.json yet — npm install (not ci) tolerates that.
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Lint
+        run: npm run lint
+
+  i18n-parity:
+    name: i18n RU/EN parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compare RU and EN keys
+        run: |
+          python <<'EOF'
+          import json, sys
+          with open("frontend/i18n/locales/ru.json") as f: ru = json.load(f)
+          with open("frontend/i18n/locales/en.json") as f: en = json.load(f)
+
+          def flat(obj, prefix=""):
+              if isinstance(obj, dict):
+                  out = []
+                  for k, v in obj.items():
+                      out.extend(flat(v, f"{prefix}.{k}" if prefix else k))
+                  return out
+              return [prefix]
+
+          ru_keys, en_keys = set(flat(ru)), set(flat(en))
+          missing_in_en = ru_keys - en_keys
+          missing_in_ru = en_keys - ru_keys
+          if missing_in_en or missing_in_ru:
+              print("RU/EN i18n keys are out of sync.")
+              if missing_in_en:
+                  print(f"Missing in en.json: {sorted(missing_in_en)}")
+              if missing_in_ru:
+                  print(f"Missing in ru.json: {sorted(missing_in_ru)}")
+              sys.exit(1)
+          print(f"OK: {len(ru_keys)} keys in RU and EN match")
+          EOF

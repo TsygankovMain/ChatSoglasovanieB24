@@ -483,6 +483,7 @@ class ApprovalB24Client:
             "BOT_MESSAGE_MAP": ("Bot Message Map", "S"),
             "DISK_FOLDER_ID": ("Disk Folder ID", "S"),
             "FILE_IDS": ("File IDs", "S"),
+            "FILE_NAMES": ("File Names", "S"),
             "CREATED_AT": ("Created At", "S"),
         })
         self._ensure_entity_properties(ENTITY_VOTES, {

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Аватар бота «Согласование» (200×200).
+  Передаётся в imbot.register как PROPERTIES.PERSONAL_PHOTO (base64 PNG).
+
+  Концепция: робот-бот с галочкой согласования вместо рта.
+  Достаточно отличается от иконки приложения, чтобы пользователь не путал
+  «кликабельный виджет» и «отправителя сообщений».
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"
+     role="img" aria-label="Аватар бота согласования">
+  <title>Бот «Согласование»</title>
+  <desc>Стилизованный аватар робота с галочкой-согласия. Используется в imbot.register.</desc>
+
+  <!-- Фон-круг — голубой брендовый, но темнее иконки Маркетплейса для отличимости. -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2FC7F7"/>
+      <stop offset="100%" stop-color="#1FA7D7"/>
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="100" fill="url(#g)"/>
+
+  <!-- Голова робота: скруглённый квадрат -->
+  <rect x="48" y="58" width="104" height="92" rx="20" ry="20"
+        fill="#FFFFFF"/>
+
+  <!-- Антенна -->
+  <line x1="100" y1="58" x2="100" y2="42" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="100" cy="38" r="6" fill="#37BB72"/>
+
+  <!-- Глаза -->
+  <circle cx="80" cy="92" r="9" fill="#1FA7D7"/>
+  <circle cx="120" cy="92" r="9" fill="#1FA7D7"/>
+
+  <!-- «Рот» — галочка согласия -->
+  <polyline points="78,124 94,138 124,112"
+            stroke="#37BB72" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- «Уши» (динамики) -->
+  <rect x="40" y="92" width="8" height="22" rx="3" fill="#FFFFFF"/>
+  <rect x="152" y="92" width="8" height="22" rx="3" fill="#FFFFFF"/>
+</svg>

@@ -1,0 +1,167 @@
+{
+  "$comment": "Манифест приложения для Bitrix24 Marketplace. См. docs/ru/marketplace/manifest-guide.md для пояснений.",
+  "code": "vendor.chat-approval",
+  "name": {
+    "ru": "Согласование в чате",
+    "en": "Chat Approval"
+  },
+  "version": "1.0.0",
+  "type": "rest",
+  "scope": [
+    "im",
+    "imbot",
+    "entity",
+    "disk",
+    "placement",
+    "user_basic"
+  ],
+  "min_bitrix24_tier": "standard",
+  "endpoints": {
+    "install": "https://__APP_DOMAIN__/",
+    "settings": "https://__APP_DOMAIN__/",
+    "uninstall_event": "https://__APP_DOMAIN__/api/event/onAppUninstall"
+  },
+  "placements": [
+    {
+      "code": "IM_TEXTAREA",
+      "title": {
+        "ru": "Согласование",
+        "en": "Approval"
+      },
+      "description": {
+        "ru": "Создать запрос на согласование прямо из чата",
+        "en": "Create an approval request right from the chat"
+      },
+      "handler": "https://__APP_DOMAIN__/",
+      "options": {
+        "width": 400,
+        "height": 300,
+        "fitWindow": true
+      }
+    }
+  ],
+  "events": [
+    {
+      "code": "ONAPPUNINSTALL",
+      "handler": "https://__APP_DOMAIN__/api/event/onAppUninstall",
+      "comment": "Идемпотентный ack; данные на бэкенде стирать не нужно (stateless-архитектура)."
+    },
+    {
+      "code": "ONIMCOMMANDADD",
+      "handler": "https://__APP_DOMAIN__/api/approval/vote",
+      "comment": "Обработка нажатия кнопок голосования из сообщения бота."
+    }
+  ],
+  "bot": {
+    "register_on_install": true,
+    "code": "approval_bot",
+    "type": "B",
+    "name": {
+      "ru": "Согласование",
+      "en": "Approval"
+    },
+    "color": "AZURE",
+    "openline": "N",
+    "comment": {
+      "ru": "Публикует запросы согласования и обновляет их по результатам голосования. Не предназначен для общения.",
+      "en": "Posts approval requests and updates them after each vote. Not for conversation."
+    },
+    "commands": [
+      {
+        "code": "approve",
+        "handler": "https://__APP_DOMAIN__/api/approval/vote"
+      },
+      {
+        "code": "reject",
+        "handler": "https://__APP_DOMAIN__/api/approval/vote"
+      }
+    ]
+  },
+  "entity_storages": [
+    {
+      "code": "appr_requests",
+      "title": {
+        "ru": "Запросы согласования",
+        "en": "Approval requests"
+      },
+      "fields": [
+        "INITIATOR_ID",
+        "COMMENT",
+        "APPROVER_IDS",
+        "THRESHOLD_TYPE",
+        "STATUS",
+        "DIALOG_ID",
+        "BOT_MESSAGE_ID",
+        "BOT_MESSAGE_IDS",
+        "BOT_DIALOG_IDS",
+        "DISK_FOLDER_ID",
+        "FILE_IDS",
+        "FILE_NAMES",
+        "CREATED_AT"
+      ]
+    },
+    {
+      "code": "approval_votes",
+      "title": {
+        "ru": "Голоса согласования",
+        "en": "Approval votes"
+      },
+      "fields": [
+        "REQUEST_ID",
+        "USER_ID",
+        "DECISION",
+        "COMMENT",
+        "VOTED_AT"
+      ]
+    }
+  ],
+  "limits": {
+    "approvers_per_request_max": 10,
+    "files_per_request_max": 10,
+    "file_size_max_bytes": 26214400,
+    "allowed_file_extensions": [
+      "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+      "txt", "csv", "rtf", "odt", "ods",
+      "png", "jpg", "jpeg", "gif", "webp", "heic",
+      "zip", "rar", "7z"
+    ]
+  },
+  "monetization": {
+    "model": "subscription",
+    "subscription_status": "monetized",
+    "in_app_purchases": false,
+    "external_services": false
+  },
+  "compliance": {
+    "stateless_backend": true,
+    "data_residency": "ru",
+    "stores_pii_outside_bitrix24": false,
+    "fz152": "compliant",
+    "log_retention_days": 30
+  },
+  "support": {
+    "email": "support@__VENDOR_DOMAIN__",
+    "helpdesk_url": "https://__VENDOR_DOMAIN__/support",
+    "response_time_hours_business": 24,
+    "sla_uptime": 0.995,
+    "business_hours": "Mon–Fri 10:00–19:00 (Europe/Moscow)"
+  },
+  "legal": {
+    "eula_url": "https://__VENDOR_DOMAIN__/legal/eula.html",
+    "privacy_policy_url": "https://__VENDOR_DOMAIN__/legal/privacy.html"
+  },
+  "categories": [
+    "collaboration_chats",
+    "automation_tasks_projects"
+  ],
+  "tags": [
+    "согласование",
+    "голосование",
+    "командная работа",
+    "чат-бот",
+    "корпоративный мессенджер"
+  ],
+  "regions": [
+    "ru"
+  ]
+}

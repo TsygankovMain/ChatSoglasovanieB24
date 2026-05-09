@@ -93,12 +93,15 @@ export const useAppInit = (loggerTitle?: string) => {
     let data: InitData
 
     try {
+      // Не грузим LoadDataType.UserOptions — userSettings не используется
+      // ни на одном функциональном экране (только в демо-обработчиках,
+      // которые подгружают свои данные при необходимости). Это экономит
+      // один из подзапросов в стартовом batch и ускоряет cold-start.
       await initB24Helper(
         $b24,
         [
           LoadDataType.App,
           LoadDataType.AppOptions,
-          LoadDataType.UserOptions,
           LoadDataType.Profile
         ]
       )
@@ -118,14 +121,13 @@ export const useAppInit = (loggerTitle?: string) => {
       const response = await $b24.callBatch({
         appInfo: { method: 'app.info' },
         appSettings: { method: 'app.option.get' },
-        userSettings: { method: 'user.option.get' },
         profileData: { method: 'profile' },
       })
       const fallbackData = response.getData() as Record<string, unknown>
       const appInfo = asRecord(fallbackData.appInfo)
       const profileData = asRecord(fallbackData.profileData)
       const appSettingsData = asRecord(fallbackData.appSettings)
-      const userSettingsData = asRecord(fallbackData.userSettings)
+      const userSettingsData: Record<string, unknown> = {}
 
       data = {
         appInfo: {

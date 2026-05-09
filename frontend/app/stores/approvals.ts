@@ -9,14 +9,24 @@ export const useApprovalsStore = defineStore('approvals', () => {
 
   const api = useApiStore()
 
+  const getErrorMessage = (errorValue: unknown, fallback: string): string => {
+    if (typeof errorValue === 'object' && errorValue !== null && 'message' in errorValue) {
+      const message = (errorValue as { message?: unknown }).message
+      if (typeof message === 'string' && message.length > 0) {
+        return message
+      }
+    }
+    return fallback
+  }
+
   async function fetchMyRequests() {
     isLoading.value = true
     error.value = null
     try {
       const res = await api.approvalList('initiator')
       myRequests.value = res.items
-    } catch (e: any) {
-      error.value = e?.message ?? 'Ошибка загрузки'
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e, 'Ошибка загрузки')
     } finally {
       isLoading.value = false
     }
@@ -28,8 +38,8 @@ export const useApprovalsStore = defineStore('approvals', () => {
     try {
       const res = await api.approvalList('approver')
       incomingRequests.value = res.items
-    } catch (e: any) {
-      error.value = e?.message ?? 'Ошибка загрузки'
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e, 'Ошибка загрузки')
     } finally {
       isLoading.value = false
     }
@@ -40,8 +50,8 @@ export const useApprovalsStore = defineStore('approvals', () => {
     error.value = null
     try {
       currentRequest.value = await api.approvalGet(id)
-    } catch (e: any) {
-      error.value = e?.message ?? 'Ошибка загрузки'
+    } catch (e: unknown) {
+      error.value = getErrorMessage(e, 'Ошибка загрузки')
     } finally {
       isLoading.value = false
     }
@@ -52,10 +62,13 @@ export const useApprovalsStore = defineStore('approvals', () => {
     error.value = null
     try {
       const result = await api.approvalCreate(formData)
-      myRequests.value.unshift(result)
+      await fetchMyRequests()
       return result
-    } catch (e: any) {
-      error.value = e?.message ?? 'Ошибка создания'
+    } catch (e: unknown) {
+      console.groupCollapsed('[approval][store] create failed')
+      console.error(e)
+      console.groupEnd()
+      error.value = getErrorMessage(e, 'Ошибка создания')
       throw e
     } finally {
       isLoading.value = false

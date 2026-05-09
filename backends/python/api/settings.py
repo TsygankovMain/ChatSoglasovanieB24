@@ -6,29 +6,29 @@ from config import config
 BASE_DIR = Path(__file__).resolve().parent
 
 SECRET_KEY = config.jwt_secret
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
+DEBUG = config.debug
 
-VIRTUAL_HOST = config.app_base_url
+# SEC-P1-4: in production VIRTUAL_HOST must be set; do not fall back to "*".
+VIRTUAL_HOST = (config.app_base_url or "").strip()
 
-if not VIRTUAL_HOST.startswith(("http://", "https://")):
+if VIRTUAL_HOST and not VIRTUAL_HOST.startswith(("http://", "https://")):
     VIRTUAL_HOST = f"https://{VIRTUAL_HOST}"
 
-if VIRTUAL_HOST:
+if VIRTUAL_HOST and VIRTUAL_HOST != "https://app_base_url":
     CSRF_TRUSTED_ORIGINS = [VIRTUAL_HOST]
-
-    domain = urlparse(VIRTUAL_HOST).hostname
-    ALLOWED_HOSTS = [domain, "localhost", "127.0.0.1", "api-python"]
+    domain = urlparse(VIRTUAL_HOST).hostname or ""
+    ALLOWED_HOSTS = [h for h in [domain, "localhost", "127.0.0.1", "api-python"] if h]
 else:
+    if not DEBUG:
+        raise RuntimeError(
+            "VIRTUAL_HOST is not configured. Refusing to start in production with ALLOWED_HOSTS=['*']."
+        )
     CSRF_TRUSTED_ORIGINS = []
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "api-python"]
 
+# Stateless: no DB, no admin, no sessions, no contrib auth.
 INSTALLED_APPS = [
-    "django.contrib.admin",
-    "django.contrib.auth",
     "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
     "main",
@@ -37,11 +37,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -56,8 +53,6 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -66,18 +61,13 @@ TEMPLATES = [
 WSGI_APPLICATION = "wsgi.application"
 ASGI_APPLICATION = "asgi.application"
 
+# Stateless backend — no database. Django still requires the key, so use the
+# in-memory dummy engine to keep manage.py working without psycopg2.
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": config.db_name,
-        "USER": config.db_user,
-        "PASSWORD": config.db_password,
-        "HOST": config.db_host,
-        "PORT": config.db_port,
+        "ENGINE": "django.db.backends.dummy",
     }
 }
-
-AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
@@ -87,4 +77,46 @@ USE_TZ = True
 STATIC_URL = "api/static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-CORS_ALLOW_ALL_ORIGINS = True
+# SEC-P1-3: restrict CORS to our app host and Bitrix24 portals.
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [VIRTUAL_HOST] if VIRTUAL_HOST else []
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r"^https://[a-z0-9-]+\.bitrix24\.[a-z]{2,3}$",
+        r"^https://[a-z0-9-]+\.bitrix\.[a-z]{2,3}$",
+    ]
+CORS_ALLOW_CREDENTIALS = True
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console": {
+            "format": "%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "console",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "approval": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "main.utils.decorators.log_errors": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

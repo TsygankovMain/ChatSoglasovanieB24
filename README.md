@@ -1,106 +1,87 @@
-# Chat Approval App for Bitrix24
+# Приложение для согласований в чате Bitrix24
 
-Проект для создания приложения согласований в чате Bitrix24.
+Приложение для Bitrix24, реализующее процесс согласования прямо в чате портала. Инициатор создаёт запрос через размещение `IM_TEXTAREA`, бот публикует сообщение с интерактивными кнопками голосования, согласующие принимают решение, итоговый статус автоматически обновляется в карточке.
 
-Базовый стартер для разработки: `https://github.com/bitrix-tools/ai-hackathon-starter-full.git`  
-UI-компоненты: `B24 UI Kit` — `https://bitrix24.github.io/b24ui/docs/getting-started/?bx_sender_conversion_id=1404928116`
+## Возможности
 
-## Документы проекта
+- Создание запроса согласования из любого чата (через размещение `IM_TEXTAREA`)
+- Бот публикует сообщение с кнопками «Согласовать» / «Отклонить» / «Запросить уточнение»
+- Несколько согласующих, опциональное правило «достаточно одного «за»» или «требуется единогласие»
+- Прикрепление файлов из Bitrix24.Disk
+- Журнал событий по каждому запросу
+- Автообновление статуса сообщения бота при поступлении голосов
+- Карточка с подробной информацией о запросе и истории голосования
 
-- Подробная спецификация: `docs/specification.md`
-- Внутренний техдок для быстрой навигации: `docs/internal-technical-notes.md`
+## Технологии
 
-## Цель MVP
+| Слой | Технология |
+|------|------------|
+| Frontend | Vue 3 + Nuxt 3, Pinia, Tailwind CSS, [@bitrix24/b24ui-nuxt](https://bitrix24.github.io/b24ui/) |
+| Backend | Python 3.11 + Django |
+| База данных | PostgreSQL 17 + Bitrix24 Entity Storage |
+| Инфраструктура | Docker, Docker Compose, Cloudpub (для dev туннелирования) |
+| Bitrix24 API | `imbot.*`, `entity.*`, `placement.*`, `disk.*`, `user.get` |
 
-В любом чате сотрудник запускает форму "Запрос согласования", указывает:
-- комментарий
-- список согласующих
-- файл (опционально)
+> Альтернативный backend на PHP (Symfony 7) присутствует в `backends/php/` (статус реализации см. в технических заметках).
 
-После отправки в чат публикуется сообщение от универсального бота с кнопками:
-- `Согласовать`
-- `Не согласовано`
+## Требования
 
-Результаты фиксируются и обновляются в сообщении запроса.
+- Docker и Docker Compose
+- Портал Bitrix24 с правами администратора для установки приложения
+- Зарегистрированное приложение в Bitrix24 (получение `CLIENT_ID` / `CLIENT_SECRET`)
+- Скоупы: `im, imbot, entity, disk, placement, user`
+- Публичный HTTPS-домен (или Cloudpub-туннель в dev)
 
-## Текущие архитектурные рамки
+## Быстрый старт (dev)
 
-- Приоритет: максимально без собственной серверной части приложения.
-- Компромисс: использовать уже зарегистрированного универсального бота.
-- Хранение бизнес-данных: Bitrix24 `entity.*` (REST Data Storage).
-- UI: `Nuxt 3` + `@bitrix24/b24ui-nuxt`.
+```bash
+# 1. Скопировать переменные окружения
+cp .env.example .env
+# Заполнить: VIRTUAL_HOST, CLIENT_ID, CLIENT_SECRET, SCOPE, CLOUDPUB_TOKEN
 
-## Структура репозитория
+# 2. Запустить Python backend + frontend + Cloudpub
+make dev-python
+# или
+COMPOSE_PROFILES=frontend,python,cloudpub docker compose --env-file .env up --build
+```
 
-```text
+После старта установите приложение на портал Bitrix24, указав публичный URL (`VIRTUAL_HOST`) в качестве handler-URL.
+
+## Структура проекта
+
+```
 .
-├── frontend/                     # Nuxt 3 + B24 UI Kit
-├── backends/                     # Стартерные backend-варианты (php/python/node)
-├── infrastructure/               # Инфраструктурные файлы
-├── instructions/                 # Справка из стартер-кита
+├── backends/
+│   ├── python/              # Django backend (основной)
+│   └── php/                 # Symfony backend (альтернативный)
+├── frontend/                # Vue 3 + Nuxt 3
+│   └── app/
+│       ├── pages/           # install, index
+│       ├── components/      # approval/* — карточки, формы, кнопки
+│       ├── stores/          # Pinia
+│       └── composables/     # useB24Frame, useApprovalData
+├── infrastructure/          # init.sql, конфиги
 ├── docs/
-│   ├── specification.md          # Подробная логика, диаграммы, CJM
-│   └── internal-technical-notes.md
+│   └── ru/                  # Документация (русский)
+├── docker-compose.yml
+├── Makefile                 # dev-python, prod-python, dev-php и т.д.
 └── README.md
 ```
 
-## Локальный запуск для разработки
+## Документация
 
-1. Подготовить окружение:
+Полная документация — в [docs/ru/INDEX.md](docs/ru/INDEX.md).
 
-```bash
-cp .env.example .env
-```
+Ключевые разделы:
+- [Архитектура](docs/ru/ARCHITECTURE.md)
+- [REST API](docs/ru/API.md)
+- [Frontend](docs/ru/FRONTEND.md)
+- [База данных](docs/ru/DATABASE.md)
+- [Интеграция Bitrix24](docs/ru/BITRIX24_INTEGRATION.md)
+- [Развёртывание](docs/ru/DEPLOYMENT.md)
+- [Разработка](docs/ru/DEVELOPMENT.md)
+- [Решение проблем](docs/ru/TROUBLESHOOTING.md)
 
-2. Установить зависимости фронтенда:
+## Лицензия
 
-```bash
-cd frontend
-npm install
-```
-
-3. (Опционально) Установить зависимости Node backend:
-
-```bash
-cd backends/node/api
-npm install
-```
-
-4. Запуск через Docker профили:
-
-```bash
-make dev-front
-make dev-node
-```
-
-5. Либо локально фронтенд без Docker:
-
-```bash
-cd frontend
-npm run dev
-```
-
-## Минимальные права приложения Bitrix24
-
-- `im`
-- `imbot`
-- `entity`
-- `disk` (для файлов)
-- `placement`
-
-Финальный список scope будет уточнён после первой технической проверки MVP.
-
-## Текущий статус разработки
-
-- **Архитектура:** Утверждена Serverless-модель (Nuxt + REST API Битрикс24).
-- **Документация:** Написана спецификация MVP, проект очищен от старых наработок бэкенда.
-- **Установка:** Приложение успешно устанавливается на портал. Настроен `placement.bind` для `IM_TEXTAREA` (контекстное меню чата).
-- **Следующий этап:** Разработка UI формы создания запроса.
-
-## План ближайших шагов
-
-1. Реализовать UI-форму создания запроса в `IM_TEXTAREA`.
-2. Подключить создание сущности запроса в `entity.item.add`.
-3. Добавить публикацию сообщения от универсального бота.
-4. Реализовать обработку голосования и обновление статуса.
-5. Добавить старт бизнес-процесса как опциональный post-action.
+См. файл `LICENSE` (если присутствует) или уточните у владельца репозитория.

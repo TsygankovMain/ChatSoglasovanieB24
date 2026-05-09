@@ -22,13 +22,17 @@ const prefillComment = ref('')
  * Fetches the text of a specific message using im.dialog.messages.get
  * (scope: im — available to any portal user with chat access).
  *
- * Strategy: request messages with LAST_ID = messageId+1 so the window
- * includes exactly the target message; filter by ID to find it.
+ * Uses LAST_ID = messageId+1 so the window includes the target message;
+ * filters by ID to find it. getData() may return either {messages:[...]}
+ * or wrap the result — handled defensively.
  * Degrades gracefully — if anything fails the form opens without pre-fill.
  */
 async function fetchMessageText(dId: string, mId: string): Promise<string> {
   const numericId = parseInt(mId, 10)
-  if (!dId || !numericId) return ''
+  if (!dId || !numericId) {
+    $logger.warn('ContextMenuPlacementPage: fetchMessageText skipped — dialogId=%s messageId=%s', dId, mId)
+    return ''
+  }
 
   try {
     const response = await $b24!.callMethod('im.dialog.messages.get', {
@@ -38,19 +42,27 @@ async function fetchMessageText(dId: string, mId: string): Promise<string> {
     })
 
     type ImMessage = { id: number | string; text?: string }
-    type ImResponse = { messages?: ImMessage[] }
-    const data = response.getData() as ImResponse
+    // getData() may return messages at top level or nested under result
+    const raw = response.getData() as Record<string, unknown>
+    $logger.info('ContextMenuPlacementPage: im.dialog.messages.get raw keys=%o', Object.keys(raw ?? {}))
 
-    const found = (data.messages ?? []).find(
-      m => String(m.id) === String(numericId)
-    )
+    const messages: ImMessage[] =
+      (raw?.messages as ImMessage[] | undefined) ??
+      ((raw?.result as Record<string, unknown> | undefined)?.messages as ImMessage[] | undefined) ??
+      []
+
+    const found = messages.find(m => String(m.id) === String(numericId))
     const text = found?.text?.trim() ?? ''
     if (text) {
-      $logger.info('ContextMenuPlacementPage: message text fetched, length=%s', text.length)
+      $logger.info('ContextMenuPlacementPage: pre-fill text length=%s', text.length)
+    } else {
+      $logger.warn(
+        'ContextMenuPlacementPage: message id=%s not found among %s messages',
+        numericId, messages.length,
+      )
     }
     return text
   } catch (err) {
-    // Non-critical — log at warn so it's visible in dev but doesn't block the form.
     $logger.warn('ContextMenuPlacementPage: failed to fetch message text', err)
     return ''
   }
@@ -64,16 +76,27 @@ onMounted(async () => {
     await initApp($b24, localesI18n, setLocale)
 
     const opts = ($b24.placement?.options ?? {}) as Record<string, unknown>
+    // Log full options so we can verify which keys Bitrix24 actually sends.
+    $logger.info('ContextMenuPlacementPage: placement options=%o', opts)
+
     dialogId.value = String(opts.dialogId ?? opts.DIALOG_ID ?? '')
     messageId.value = String(opts.messageId ?? opts.MESSAGE_ID ?? '')
+    $logger.info('ContextMenuPlacementPage: dialogId=%s messageId=%s', dialogId.value, messageId.value)
 
     page.title = t('page.context-menu.seo.title')
     await $b24.parent.setTitle(t('page.context-menu.seo.title'))
 
-    // Fetch message text in parallel with title update (non-blocking init).
     prefillComment.value = await fetchMessageText(dialogId.value, messageId.value)
 
     isInit.value = true
+
+    // Resize the slider to fit its content (no wasted whitespace).
+    await nextTick()
+    try {
+      await $b24.parent.fitWindow()
+    } catch {
+      // fitWindow is not critical — ignore if unavailable.
+    }
   } catch (error) {
     processErrorGlobal(error)
   }
@@ -99,7 +122,9 @@ async function onCancel() {
 </script>
 
 <template>
-  <NuxtLayout name="slider">
+  <!-- No layout wrapper — renders directly in the Bitrix24 slider iframe.
+       fitWindow() called after mount adjusts the frame height to content. -->
+  <div class="bg-white">
     <div v-if="isInit">
       <!-- Message attribution badge -->
       <p
@@ -122,5 +147,5 @@ async function onCancel() {
     <div v-else class="flex justify-center p-8">
       <B24Progress animation="carousel" />
     </div>
-  </NuxtLayout>
+  </div>
 </template>

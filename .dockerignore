@@ -1,0 +1,40 @@
+.git
+.gitignore
+.gitattributes
+.github
+.codex
+.claude
+.superpowers
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local secrets and generated env snapshots
+.env
+.env.*
+deploy/*.env
+backends/php/.env
+
+# Dependency and build artifacts
+node_modules
+frontend/node_modules
+frontend/.nuxt
+frontend/.output
+frontend/.cache
+frontend/.pnpm-store
+frontend/.npm-cache
+backends/php/vendor
+
+# Runtime noise
+logs
+*.log
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.coverage
+htmlcov

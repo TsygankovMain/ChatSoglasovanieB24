@@ -1,3 +1,12 @@
+"""Stateless auth_required decorator.
+
+Resolves the per-request B24AuthContext from either:
+  1. JWT in Authorization: Bearer <token> header (frontend, after /api/get_token)
+  2. OAuth placement data in request body (frontend, on first install/launch)
+
+No database lookup. Auth context is held in-memory for the duration of the request.
+"""
+
 from functools import wraps
 from http import HTTPStatus
 from typing import cast
@@ -10,7 +19,7 @@ from b24pysdk.bitrix_api.credentials import OAuthPlacementData
 from b24pysdk.error import BitrixValidationError
 from b24pysdk.utils.types import JSONDict
 
-from ...models import Bitrix24Account
+from ...b24_auth import B24AuthContext
 from .collect_request_data import collect_request_data
 
 
@@ -24,10 +33,7 @@ def auth_required(view_func):
             jwt_token = auth[len("bearer "):]
 
             try:
-                request.bitrix24_account = Bitrix24Account.get_from_jwt_token(jwt_token)
-
-            except Bitrix24Account.DoesNotExist:
-                return JsonResponse({"error": "Invalid JWT token"}, status=HTTPStatus.UNAUTHORIZED)
+                request.bitrix24_account = B24AuthContext.from_jwt_token(jwt_token)
 
             except jwt.ExpiredSignatureError:
                 return JsonResponse({"error": "JWT token has expired"}, status=HTTPStatus.UNAUTHORIZED)
@@ -39,10 +45,10 @@ def auth_required(view_func):
                 return JsonResponse({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
 
         else:
-            # Create OAuthData and pass it in the request
+            # First-touch flow: frontend posts raw OAuth placement data, no JWT yet.
             try:
                 oauth_placement_data = OAuthPlacementData.from_dict(cast(JSONDict, request.data))
-                request.bitrix24_account, _ = Bitrix24Account.update_or_create_from_oauth_placement_data(oauth_placement_data)
+                request.bitrix24_account = B24AuthContext.from_oauth_placement_data(oauth_placement_data)
 
             except BitrixValidationError as error:
                 return JsonResponse({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)

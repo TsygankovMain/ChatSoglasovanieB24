@@ -51,9 +51,16 @@ function handleDrop(event: DragEvent) {
       >
         <span class="truncate flex-1">{{ file.name }}</span>
         <span class="text-xs text-b24-base-400 ml-2">{{ formatSize(file.size) }}</span>
-        <button type="button" class="ml-2 text-b24-base-400 hover:text-b24-red-500" @click="emit('remove', idx)">
-          <Cross20Icon class="h-4 w-4" />
-        </button>
+        <B24Button
+          class="ml-2"
+          variant="ghost"
+          color="text"
+          size="xs"
+          :icon="Cross20Icon"
+          square
+          :aria-label="t('approval.form.remove_file')"
+          @click="emit('remove', idx)"
+        />
       </div>
     </div>
   </div>

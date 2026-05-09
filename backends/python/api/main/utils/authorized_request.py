@@ -3,8 +3,9 @@ from typing import TYPE_CHECKING
 from django.http import HttpRequest
 
 if TYPE_CHECKING:
-    from ..models import Bitrix24Account
+    from ..b24_auth import B24AuthContext
 
 
 class AuthorizedRequest(HttpRequest):
-    bitrix24_account: "Bitrix24Account"
+    bitrix24_account: "B24AuthContext"
+    data: dict

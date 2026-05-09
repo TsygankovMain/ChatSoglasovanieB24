@@ -14,10 +14,10 @@ def validate_can_vote(request_item: dict, user_id: str) -> None:
 
     status = props.get("STATUS", "")
     if status != "collecting":
-        raise ApprovalRulesError("Request is not in collecting state")
+        raise ApprovalRulesError("Голосование по этому запросу уже завершено.")
 
     if str(user_id) == str(props.get("INITIATOR_ID", "")):
-        raise ApprovalRulesError("Initiator cannot vote on their own request")
+        raise ApprovalRulesError("Инициатор не может голосовать по своему запросу.")
 
     try:
         approver_ids = [str(a) for a in json.loads(props.get("APPROVER_IDS", "[]"))]
@@ -25,7 +25,7 @@ def validate_can_vote(request_item: dict, user_id: str) -> None:
         approver_ids = []
 
     if str(user_id) not in approver_ids:
-        raise ApprovalRulesError("User is not an approver for this request")
+        raise ApprovalRulesError("Вы не входите в список согласующих по этому запросу.")
 
 
 def compute_new_status(request_item: dict, votes: list) -> str:
