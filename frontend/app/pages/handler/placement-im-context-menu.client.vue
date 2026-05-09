@@ -93,9 +93,14 @@ onMounted(async () => {
     // Resize the slider to fit its content (no wasted whitespace).
     await nextTick()
     try {
-      await $b24.parent.fitWindow()
+      // Keep IM context popup compact instead of full-height slider look.
+      await $b24.parent.resizeWindowAuto(560, 420)
     } catch {
-      // fitWindow is not critical — ignore if unavailable.
+      try {
+        await $b24.parent.fitWindow()
+      } catch {
+        // sizing is not critical — ignore if unavailable.
+      }
     }
   } catch (error) {
     processErrorGlobal(error)
@@ -138,6 +143,7 @@ async function onCancel() {
         <LazyApprovalCreateForm
           :dialog-id="dialogId"
           :prefill-comment="prefillComment"
+          compact
           @created="onCreated"
           @cancel="onCancel"
         />

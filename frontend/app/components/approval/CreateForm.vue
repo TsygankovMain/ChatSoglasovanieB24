@@ -5,6 +5,8 @@ const props = defineProps<{
   dialogId: string
   /** Optional text to pre-fill the comment field (e.g. from IM_CONTEXT_MENU). */
   prefillComment?: string
+  /** Compact mode for small placement popups (e.g. IM context menu). */
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -239,7 +241,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div :class="props.compact ? 'space-y-2' : 'space-y-3'">
     <div>
       <label class="block text-xs font-medium text-b24-base-600 mb-0.5">
         {{ t('approval.form.comment') }} <span class="text-b24-red-500">*</span>
@@ -276,7 +278,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div>
+    <div v-if="!props.compact">
       <label class="block text-xs font-medium text-b24-base-600 mb-0.5">
         {{ t('approval.form.threshold') }}
       </label>
@@ -288,7 +290,7 @@ onMounted(() => {
       />
     </div>
 
-    <div>
+    <div v-if="!props.compact">
       <label class="block text-xs font-medium text-b24-base-600 mb-0.5">
         {{ t('approval.form.files') }}
       </label>

@@ -52,7 +52,11 @@ export const useApiStore = defineStore(
   () => {
     let $b24: null | B24Frame = null
     const config = useRuntimeConfig()
-    const apiUrl = withoutTrailingSlash(config.public.apiUrl)
+    const apiUrlRaw = String(config.public.apiUrl ?? '').trim()
+    const apiUrl = (apiUrlRaw && apiUrlRaw !== '/')
+      ? withoutTrailingSlash(apiUrlRaw)
+      : ''
+    const makeApiUrl = (path: string) => (apiUrl ? `${apiUrl}${path}` : path)
 
     const tokenJWT = ref('')
 
@@ -155,7 +159,7 @@ export const useApiStore = defineStore(
       }
 
       try {
-        const response = await $fetch<ApprovalRequest>(`${apiUrl}/api/approval/create`, {
+        const response = await $fetch<ApprovalRequest>(makeApiUrl('/api/approval/create'), {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${tokenJWT.value}`,
