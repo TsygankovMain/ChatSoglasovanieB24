@@ -15,7 +15,6 @@ import jwt
 
 from django.http import JsonResponse, HttpRequest
 
-from b24pysdk.bitrix_api.credentials import OAuthPlacementData
 from b24pysdk.error import BitrixValidationError
 from b24pysdk.utils.types import JSONDict
 
@@ -47,10 +46,8 @@ def auth_required(view_func):
         else:
             # First-touch flow: frontend posts raw OAuth placement data, no JWT yet.
             try:
-                oauth_placement_data = OAuthPlacementData.from_dict(cast(JSONDict, request.data))
-                request.bitrix24_account = B24AuthContext.from_oauth_placement_data(
-                    oauth_placement_data,
-                    request.data,
+                request.bitrix24_account = B24AuthContext.from_raw_oauth_data(
+                    cast(JSONDict, request.data),
                 )
 
             except BitrixValidationError as error:

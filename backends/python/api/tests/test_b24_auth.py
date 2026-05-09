@@ -72,6 +72,38 @@ class B24AuthContextWebhookFactoryTests(unittest.TestCase):
 
 
 class B24AuthContextMarketplaceFactoryTests(unittest.TestCase):
+    def test_from_raw_oauth_data_accepts_minimal_iframe_payload(self):
+        ctx = B24AuthContext.from_raw_oauth_data({
+            "DOMAIN": "portal.bitrix24.ru",
+            "AUTH_ID": "access-token",
+            "member_id": "member-1",
+        })
+
+        self.assertEqual(ctx.access_token, "access-token")
+        self.assertEqual(ctx.domain_url, "portal.bitrix24.ru")
+        self.assertEqual(ctx.member_id, "member-1")
+        self.assertEqual(ctx.expires_in, 3600)
+
+    def test_from_raw_oauth_data_accepts_nested_marketplace_auth_payload(self):
+        ctx = B24AuthContext.from_raw_oauth_data({
+            "auth": {
+                "access_token": "access-token",
+                "refresh_token": "refresh-token",
+                "domain": "https://portal.bitrix24.ru",
+                "member_id": "member-1",
+                "user_id": "321",
+                "expires_in": "1800",
+                "scope": "im,placement",
+            }
+        })
+
+        self.assertEqual(ctx.access_token, "access-token")
+        self.assertEqual(ctx.refresh_token, "refresh-token")
+        self.assertEqual(ctx.domain_url, "portal.bitrix24.ru")
+        self.assertEqual(ctx.b24_user_id, 321)
+        self.assertEqual(ctx.expires_in, 1800)
+        self.assertIn("placement", ctx.current_scope)
+
     def test_from_oauth_placement_data_does_not_require_app_secret(self):
         raw = {
             "DOMAIN": "portal.bitrix24.ru",

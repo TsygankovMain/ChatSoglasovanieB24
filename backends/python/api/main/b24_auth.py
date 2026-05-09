@@ -170,6 +170,69 @@ class B24AuthContext(AbstractBitrixToken):
     # ===== Factory: from OAuth placement data (frontend install/auth flow) =====
 
     @classmethod
+    def from_raw_oauth_data(cls, raw_oauth_data: dict) -> "B24AuthContext":
+        """Build request auth from raw Bitrix24 iframe/install payload.
+
+        Bitrix24 Marketplace install frames and the JS SDK do not guarantee the
+        exact same field set as b24pysdk's OAuthPlacementData parser. Keep the
+        server tolerant: token, domain and member_id are the hard requirements;
+        optional install/app fields default safely.
+        """
+        if not isinstance(raw_oauth_data, dict):
+            raise BitrixValidationError("OAuth payload must be an object")
+
+        auth = raw_oauth_data.get("auth") if isinstance(raw_oauth_data.get("auth"), dict) else {}
+
+        def first_value(*keys: str, default=""):
+            for key in keys:
+                if key in raw_oauth_data and raw_oauth_data.get(key) not in (None, ""):
+                    return raw_oauth_data.get(key)
+                if key in auth and auth.get(key) not in (None, ""):
+                    return auth.get(key)
+            return default
+
+        def to_int(value, fallback: int = 0) -> int:
+            try:
+                return int(value or fallback)
+            except (TypeError, ValueError):
+                return fallback
+
+        access_token = str(first_value("AUTH_ID", "access_token")).strip()
+        domain = str(first_value("DOMAIN", "domain")).strip()
+        member_id = str(first_value("member_id")).strip()
+
+        if not access_token:
+            raise BitrixValidationError("OAuth payload missing AUTH_ID/access_token")
+        if not domain:
+            raise BitrixValidationError("OAuth payload missing DOMAIN/domain")
+        if not member_id:
+            raise BitrixValidationError("OAuth payload missing member_id")
+
+        domain = domain.removeprefix("https://").removeprefix("http://").rstrip("/")
+        expires_in = to_int(first_value("AUTH_EXPIRES", "expires_in", default=3600), 3600)
+        expires = to_int(first_value("expires", default=0), 0)
+        if not expires:
+            expires = int((timezone.now() + timedelta(seconds=expires_in)).timestamp())
+
+        scope = first_value("scope", "SCOPE", "current_scope", default=[])
+        if isinstance(scope, str):
+            scope = [item.strip() for item in scope.split(",") if item.strip()]
+
+        return cls(
+            b24_user_id=to_int(first_value("user_id", "USER_ID", "USER", default=0)),
+            member_id=member_id,
+            domain_url=domain,
+            access_token=access_token,
+            refresh_token=str(first_value("REFRESH_ID", "REFRESH_TOKEN", "refresh_token")).strip(),
+            expires=expires,
+            expires_in=expires_in,
+            application_token=str(first_value("application_token")).strip(),
+            application_version=to_int(first_value("appVersion", "APP_VERSION", "VERSION", default=0)),
+            status=str(first_value("status", "STATUS", default="")).strip(),
+            current_scope=scope,
+        )
+
+    @classmethod
     def from_oauth_placement_data(
         cls,
         oauth_placement_data: "OAuthPlacementData",
