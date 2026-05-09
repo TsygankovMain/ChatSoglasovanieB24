@@ -24,8 +24,12 @@ ENV NODE_ENV=production \
     DJANGO_PORT=8000 \
     PATH=/opt/venv/bin:$PATH
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN set -eux; \
+    apt_get_update() { \
+      apt-get -o Acquire::ForceIPv4=true update; \
+    }; \
+    apt_get_install() { \
+      apt-get -o Acquire::ForceIPv4=true install -y --no-install-recommends \
         bash \
         ca-certificates \
         curl \
@@ -34,9 +38,12 @@ RUN apt-get update \
         python3 \
         python3-pip \
         python3-venv \
-        tini \
-    && rm -rf /var/lib/apt/lists/* \
-    && python3 -m venv /opt/venv
+        tini; \
+    }; \
+    for i in 1 2 3; do apt_get_update && break || { echo "apt update failed, retry $i"; sleep 5; }; done; \
+    for i in 1 2 3; do apt_get_install && break || { echo "apt install failed, retry $i"; sleep 5; }; done; \
+    rm -rf /var/lib/apt/lists/*; \
+    python3 -m venv /opt/venv
 
 WORKDIR /app
 
