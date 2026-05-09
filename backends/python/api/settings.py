@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 from urllib.parse import urlparse
 
 from config import config
@@ -8,23 +9,68 @@ BASE_DIR = Path(__file__).resolve().parent
 SECRET_KEY = config.jwt_secret
 DEBUG = config.debug
 
-# SEC-P1-4: in production VIRTUAL_HOST must be set; do not fall back to "*".
-VIRTUAL_HOST = (config.app_base_url or "").strip()
+def _normalize_origin(value: str) -> str:
+    raw = (value or "").strip()
+    if not raw:
+        return ""
+    if not raw.startswith(("http://", "https://")):
+        raw = f"https://{raw}"
+    parsed = urlparse(raw)
+    if not parsed.hostname:
+        return ""
+    return f"{parsed.scheme}://{parsed.hostname}".rstrip("/")
 
-if VIRTUAL_HOST and not VIRTUAL_HOST.startswith(("http://", "https://")):
-    VIRTUAL_HOST = f"https://{VIRTUAL_HOST}"
 
-if VIRTUAL_HOST and VIRTUAL_HOST != "https://app_base_url":
-    CSRF_TRUSTED_ORIGINS = [VIRTUAL_HOST]
-    domain = urlparse(VIRTUAL_HOST).hostname or ""
-    ALLOWED_HOSTS = [h for h in [domain, "localhost", "127.0.0.1", "api-python"] if h]
-else:
-    if not DEBUG:
-        raise RuntimeError(
-            "VIRTUAL_HOST is not configured. Refusing to start in production with ALLOWED_HOSTS=['*']."
-        )
-    CSRF_TRUSTED_ORIGINS = []
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "api-python"]
+def _extract_host(value: str) -> str:
+    origin = _normalize_origin(value)
+    if not origin:
+        return ""
+    return urlparse(origin).hostname or ""
+
+
+def _parse_allowed_hosts(raw: str) -> list[str]:
+    hosts: list[str] = []
+    for item in (raw or "").split(","):
+        candidate = item.strip().lower().rstrip(".")
+        if not candidate:
+            continue
+        if candidate.startswith(("http://", "https://")):
+            candidate = _extract_host(candidate)
+        if candidate and ":" in candidate and not candidate.startswith("["):
+            candidate = candidate.split(":", 1)[0]
+        if candidate:
+            hosts.append(candidate)
+    return hosts
+
+
+# SEC-P1-4: in production host checks must be explicit and deterministic.
+VIRTUAL_HOST = _normalize_origin(config.app_base_url)
+APP_URL = _normalize_origin(os.getenv("APP_URL", ""))
+PUBLIC_APP_URL = _normalize_origin(os.getenv("NUXT_PUBLIC_APP_URL", ""))
+EXTRA_ALLOWED_HOSTS = _parse_allowed_hosts(os.getenv("ALLOWED_HOSTS", ""))
+
+trusted_origins = [origin for origin in [VIRTUAL_HOST, APP_URL, PUBLIC_APP_URL] if origin]
+derived_hosts = [
+    host for host in [
+        _extract_host(VIRTUAL_HOST),
+        _extract_host(APP_URL),
+        _extract_host(PUBLIC_APP_URL),
+    ] if host
+]
+derived_hosts.extend(EXTRA_ALLOWED_HOSTS)
+derived_hosts.extend(["localhost", "127.0.0.1", "api-python"])
+
+# Timeweb App Platform technical domains can change between redeploys.
+if any(host.endswith(".twc1.net") for host in derived_hosts):
+    derived_hosts.append(".twc1.net")
+
+ALLOWED_HOSTS = sorted(set(derived_hosts))
+CSRF_TRUSTED_ORIGINS = sorted(set(trusted_origins))
+
+if not DEBUG and (not CSRF_TRUSTED_ORIGINS or not ALLOWED_HOSTS):
+    raise RuntimeError(
+        "Host configuration is incomplete. Set VIRTUAL_HOST/APP_URL and optionally ALLOWED_HOSTS."
+    )
 
 # Stateless: no DB, no admin, no sessions, no contrib auth.
 INSTALLED_APPS = [
@@ -82,7 +128,7 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = [VIRTUAL_HOST] if VIRTUAL_HOST else []
+    CORS_ALLOWED_ORIGINS = CSRF_TRUSTED_ORIGINS
     CORS_ALLOWED_ORIGIN_REGEXES = [
         r"^https://[a-z0-9-]+\.bitrix24\.[a-z]{2,3}$",
         r"^https://[a-z0-9-]+\.bitrix\.[a-z]{2,3}$",
@@ -114,6 +160,11 @@ LOGGING = {
             "propagate": False,
         },
         "main.utils.decorators.log_errors": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.security.DisallowedHost": {
             "handlers": ["console"],
             "level": "INFO",
             "propagate": False,
