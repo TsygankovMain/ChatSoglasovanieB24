@@ -51,22 +51,28 @@ const approverNamesText = computed(() => {
   const names = props.request.approver_ids.map(id => props.request.approver_names?.[id] || id)
   return names.join(', ')
 })
+
+const eventCount = computed(() => props.request.events?.length ?? 0)
 </script>
 
 <template>
   <B24Card
     variant="outline"
-    class="cursor-pointer hover:shadow-sm transition-shadow"
+    class="cursor-pointer border border-b24-base-200 bg-white/90 hover:shadow-sm transition-shadow"
     @click="emit('click', request.id)"
   >
-    <div class="flex items-start justify-between gap-2">
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium truncate">{{ request.comment }}</p>
-        <p class="text-xs text-b24-base-400 mt-0.5">{{ formattedDate }}</p>
-        <p class="text-xs text-b24-base-500 mt-1 truncate">
-          {{ t('approval.card.initiator') }}: {{ request.initiator_name || request.initiator_id }}
-        </p>
-        <p class="text-xs text-b24-base-500 mt-0.5 truncate">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold leading-5 text-b24-base-800 break-words">{{ request.comment }}</p>
+        <div class="mt-1 flex flex-wrap items-center gap-2">
+          <span class="inline-flex rounded-md border border-b24-base-200 bg-b24-base-50 px-2 py-0.5 text-[11px] text-b24-base-500">
+            {{ formattedDate }}
+          </span>
+          <span class="inline-flex rounded-md border border-b24-base-200 bg-white px-2 py-0.5 text-[11px] text-b24-base-500">
+            {{ t('approval.card.initiator') }}: {{ request.initiator_name || request.initiator_id }}
+          </span>
+        </div>
+        <p class="text-xs text-b24-base-500 mt-2 break-words">
           {{ t('approval.card.approvers') }}: {{ approverNamesText }}
         </p>
       </div>
@@ -103,9 +109,14 @@ const approverNamesText = computed(() => {
       <ApprovalVoteStatus :request="request" />
     </div>
 
-    <div class="mt-3">
-      <ApprovalEventLog :request="request" :max-items="3" />
-    </div>
+    <details class="mt-3 rounded-lg border border-b24-base-200 bg-b24-base-50/50 px-3 py-2" @click.stop>
+      <summary class="cursor-pointer text-xs font-medium text-b24-base-600">
+        {{ t('approval.event.log_title') }} <span class="text-b24-base-400">({{ eventCount }})</span>
+      </summary>
+      <div class="mt-2">
+        <ApprovalEventLog :request="request" :max-items="6" />
+      </div>
+    </details>
 
     <div v-if="isInitiator && !isTerminal" class="mt-3 flex justify-end">
       <B24Button

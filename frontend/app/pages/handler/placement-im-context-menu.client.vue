@@ -15,6 +15,13 @@ const isInit = ref(false)
 const dialogId = ref('')
 const messageId = ref('')
 const prefillComment = ref('')
+const quotedPreview = computed(() => {
+  const text = prefillComment.value.trim()
+  if (!text) {
+    return ''
+  }
+  return text.length > 220 ? `${text.slice(0, 220)}…` : text
+})
 
 // ── Message text fetch ─────────────────────────────────────────────────────
 
@@ -90,11 +97,10 @@ onMounted(async () => {
 
     isInit.value = true
 
-    // Resize the slider to fit its content (no wasted whitespace).
+    // Resize the frame to look like a compact popup-style window.
     await nextTick()
     try {
-      // Keep IM context popup compact instead of full-height slider look.
-      await $b24.parent.resizeWindowAuto(560, 420)
+      await $b24.parent.resizeWindowAuto(680, 560)
     } catch {
       try {
         await $b24.parent.fitWindow()
@@ -127,30 +133,62 @@ async function onCancel() {
 </script>
 
 <template>
-  <!-- No layout wrapper — renders directly in the Bitrix24 slider iframe.
-       fitWindow() called after mount adjusts the frame height to content. -->
-  <div class="bg-white">
-    <div v-if="isInit">
-      <!-- Message attribution badge -->
-      <p
-        v-if="messageId"
-        class="text-xs text-b24-base-400 px-4 pt-3 pb-1"
+  <!-- IM_CONTEXT_MENU always opens inside a Bitrix container.
+       This centered card gives a popup feel instead of a heavy full-panel form. -->
+  <div class="min-h-screen bg-gradient-to-b from-b24-base-50 to-white p-3 sm:p-4">
+    <div v-if="isInit" class="mx-auto w-full max-w-[680px]">
+      <B24Card
+        variant="outline"
+        class="border border-b24-base-200 shadow-sm"
       >
-        {{ t('page.context-menu.based_on_message', { id: messageId }) }}
-      </p>
+        <template #header>
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <ProseH3 class="mb-0 text-base font-semibold">
+                {{ t('page.context-menu.seo.title') }}
+              </ProseH3>
+              <p
+                v-if="messageId"
+                class="mt-1 text-xs text-b24-base-500"
+              >
+                {{ t('page.context-menu.based_on_message', { id: messageId }) }}
+              </p>
+            </div>
+            <B24Button
+              size="xs"
+              variant="ghost"
+              color="secondary"
+              :label="t('approval.action.cancel')"
+              @click="onCancel"
+            />
+          </div>
+        </template>
 
-      <div class="px-4 pb-4" :class="messageId ? '' : 'pt-4'">
-        <LazyApprovalCreateForm
-          :dialog-id="dialogId"
-          :prefill-comment="prefillComment"
-          compact
-          @created="onCreated"
-          @cancel="onCancel"
-        />
-      </div>
+        <div class="space-y-3">
+          <div
+            v-if="quotedPreview"
+            class="rounded-lg border border-b24-base-200 bg-b24-base-50 px-3 py-2"
+          >
+            <p class="text-[11px] uppercase tracking-wide text-b24-base-400">
+              {{ t('page.context-menu.based_on_message', { id: messageId }) }}
+            </p>
+            <p class="mt-1 text-xs leading-5 text-b24-base-700">
+              {{ quotedPreview }}
+            </p>
+          </div>
+
+          <LazyApprovalCreateForm
+            :dialog-id="dialogId"
+            :prefill-comment="prefillComment"
+            compact
+            @created="onCreated"
+            @cancel="onCancel"
+          />
+        </div>
+      </B24Card>
     </div>
 
-    <div v-else class="flex justify-center p-8">
+    <div v-else class="flex min-h-[200px] items-center justify-center">
       <B24Progress animation="carousel" />
     </div>
   </div>

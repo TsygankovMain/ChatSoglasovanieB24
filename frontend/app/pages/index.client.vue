@@ -31,6 +31,11 @@ const isBackendUnavailable = ref(false)
 const isContextMissing = computed(() => dialogId.value.trim().length === 0)
 const isInChat = computed(() => !isContextMissing.value)
 const shouldShowCreateForm = computed(() => isInChat.value || showCreateForm.value)
+const isDev = import.meta.dev
+const contextMeta = computed(() => ({
+  dialogId: dialogId.value,
+  placementOptions: placementOptions.value,
+}))
 
 const currentList = computed(() =>
   activeTab.value === 'my' ? approval.myRequests.value : approval.incomingRequests.value
@@ -130,32 +135,39 @@ watch(showCreateForm, async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 p-4">
-    <div v-if="isInit">
-      <div v-if="!isInChat" class="flex items-center justify-between mb-4">
-        <div class="flex gap-2">
-          <B24Button
-            :label="t('approval.tab.my')"
-            :color="activeTab === 'my' ? 'primary' : 'secondary'"
-            variant="ghost"
-            @click="activeTab = 'my'"
-          />
-          <B24Button
-            :label="t('approval.tab.incoming')"
-            :color="activeTab === 'incoming' ? 'primary' : 'secondary'"
-            variant="ghost"
-            @click="activeTab = 'incoming'"
-          />
+  <div class="mx-auto w-full max-w-[1080px] px-3 py-4">
+    <div v-if="isInit" class="space-y-4">
+      <B24Card
+        v-if="isContextMissing"
+        variant="soft"
+        class="border border-b24-red-200 bg-b24-red-50/60"
+      >
+        <div class="flex flex-col gap-2">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-b24-red-700">
+                {{ t('approval.context.missing_title') }}
+              </p>
+              <p class="text-xs text-b24-base-700 mt-1">
+                {{ t('approval.context.missing_description') }}
+              </p>
+            </div>
+            <span class="shrink-0 rounded-md border border-b24-red-200 bg-white px-2 py-1 text-[11px] font-semibold tracking-wide text-b24-red-600">
+              IM_TEXTAREA
+            </span>
+          </div>
+
+          <details
+            v-if="isDev"
+            class="rounded-lg border border-b24-base-200 bg-white px-2 py-1.5"
+          >
+            <summary class="cursor-pointer text-xs text-b24-base-500">Debug payload</summary>
+            <ProsePre class="mt-2 !text-xs">
+              {{ contextMeta }}
+            </ProsePre>
+          </details>
         </div>
-        <B24Button
-          v-if="!showCreateForm"
-          :icon="PlusLIcon"
-          :label="t('approval.action.create')"
-          color="air-primary"
-          :disabled="isContextMissing"
-          @click="showCreateForm = true"
-        />
-      </div>
+      </B24Card>
 
       <B24Alert
         v-if="isBackendUnavailable"
@@ -165,24 +177,47 @@ watch(showCreateForm, async () => {
         size="sm"
       />
 
-      <B24Alert
-        v-if="isContextMissing"
-        :title="t('approval.context.missing_title')"
-        :description="t('approval.context.missing_description')"
-        color="air-primary-alert"
-        size="sm"
-      />
-
-      <ProsePre v-if="isContextMissing" class="mt-2">
-        {{ { dialogId, placementOptions } }}
-      </ProsePre>
+      <B24Card
+        v-if="!isInChat"
+        variant="outline"
+        class="border border-b24-base-200"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex gap-2">
+            <B24Button
+              :label="t('approval.tab.my')"
+              :color="activeTab === 'my' ? 'primary' : 'secondary'"
+              variant="ghost"
+              @click="activeTab = 'my'"
+            />
+            <B24Button
+              :label="t('approval.tab.incoming')"
+              :color="activeTab === 'incoming' ? 'primary' : 'secondary'"
+              variant="ghost"
+              @click="activeTab = 'incoming'"
+            />
+          </div>
+          <B24Button
+            v-if="!showCreateForm"
+            :icon="PlusLIcon"
+            :label="t('approval.action.create')"
+            color="air-primary"
+            :disabled="isContextMissing"
+            @click="showCreateForm = true"
+          />
+        </div>
+      </B24Card>
 
       <!-- LazyApprovalCreateForm: компонент с тяжёлыми зависимостями
            (B24Select multi-filter, B24Textarea, callListMethod user.get).
            Без Lazy он попадает в основной чанк и замедляет первый рендер. -->
-      <B24Card v-if="shouldShowCreateForm" :class="isInChat ? 'mb-2' : 'mb-4'">
+      <B24Card
+        v-if="shouldShowCreateForm"
+        variant="outline"
+        class="border border-b24-base-200 shadow-xs"
+      >
         <template v-if="!isInChat" #header>
-          <ProseH2>{{ t('approval.form.title') }}</ProseH2>
+          <ProseH2 class="mb-0">{{ t('approval.form.title') }}</ProseH2>
         </template>
         <LazyApprovalCreateForm
           :dialog-id="dialogId"
@@ -191,15 +226,27 @@ watch(showCreateForm, async () => {
         />
       </B24Card>
 
-      <div v-if="!isInChat && !isBackendUnavailable && approval.isLoading.value" class="flex justify-center py-8">
+      <div
+        v-if="!isInChat && !isBackendUnavailable && approval.isLoading.value"
+        class="flex justify-center py-10"
+      >
         <B24Progress animation="carousel" />
       </div>
 
-      <div v-else-if="!isInChat && !isBackendUnavailable && currentList.length === 0" class="text-center py-8 text-b24-base-400">
-        {{ t('approval.empty') }}
-      </div>
+      <B24Card
+        v-else-if="!isInChat && !isBackendUnavailable && currentList.length === 0"
+        variant="soft"
+        class="border border-b24-base-200"
+      >
+        <div class="py-8 text-center text-sm text-b24-base-500">
+          {{ t('approval.empty') }}
+        </div>
+      </B24Card>
 
-      <div v-else-if="!isInChat && !isBackendUnavailable" class="space-y-3">
+      <div
+        v-else-if="!isInChat && !isBackendUnavailable"
+        class="grid grid-cols-1 gap-3"
+      >
         <ApprovalRequestCard
           v-for="req in currentList"
           :key="req.id"
