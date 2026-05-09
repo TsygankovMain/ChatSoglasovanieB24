@@ -25,17 +25,11 @@ const isInit = ref(false)
 const activeTab = ref<'my' | 'incoming'>('my')
 const showCreateForm = ref(false)
 const dialogId = ref('')
-const placementOptions = ref<Record<string, unknown>>({})
 const isBackendUnavailable = ref(false)
 
 const isContextMissing = computed(() => dialogId.value.trim().length === 0)
 const isInChat = computed(() => !isContextMissing.value)
 const shouldShowCreateForm = computed(() => isInChat.value || showCreateForm.value)
-const isDev = import.meta.dev
-const contextMeta = computed(() => ({
-  dialogId: dialogId.value,
-  placementOptions: placementOptions.value,
-}))
 
 const currentList = computed(() =>
   activeTab.value === 'my' ? approval.myRequests.value : approval.incomingRequests.value
@@ -95,7 +89,6 @@ onMounted(async () => {
     // не делать 3 IPC последовательно (≈ -200..400 мс на холодный запуск).
     // setTitle/fitWindow — IPC к Bitrix24-родителю; placement.options — sync.
     const opts = $b24.placement?.options ?? {}
-    placementOptions.value = opts
     dialogId.value = opts?.dialogId ?? opts?.DIALOG_ID ?? ''
 
     isInit.value = true
@@ -137,38 +130,6 @@ watch(showCreateForm, async () => {
 <template>
   <div class="mx-auto w-full max-w-[1080px] px-3 py-4">
     <div v-if="isInit" class="space-y-4">
-      <B24Card
-        v-if="isContextMissing"
-        variant="soft"
-        class="border border-b24-red-200 bg-b24-red-50/60"
-      >
-        <div class="flex flex-col gap-2">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-b24-red-700">
-                {{ t('approval.context.missing_title') }}
-              </p>
-              <p class="text-xs text-b24-base-700 mt-1">
-                {{ t('approval.context.missing_description') }}
-              </p>
-            </div>
-            <span class="shrink-0 rounded-md border border-b24-red-200 bg-white px-2 py-1 text-[11px] font-semibold tracking-wide text-b24-red-600">
-              IM_TEXTAREA
-            </span>
-          </div>
-
-          <details
-            v-if="isDev"
-            class="rounded-lg border border-b24-base-200 bg-white px-2 py-1.5"
-          >
-            <summary class="cursor-pointer text-xs text-b24-base-500">Debug payload</summary>
-            <ProsePre class="mt-2 !text-xs">
-              {{ contextMeta }}
-            </ProsePre>
-          </details>
-        </div>
-      </B24Card>
-
       <B24Alert
         v-if="isBackendUnavailable"
         :title="t('approval.backend.unavailable_title')"

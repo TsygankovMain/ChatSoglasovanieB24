@@ -16,7 +16,6 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const { $initializeB24Frame } = useNuxtApp()
 const approval = useApproval()
-const userStore = useUserStore()
 const { files, addFiles, removeFile, clear: clearFiles } = useApprovalFiles()
 
 type PortalUser = {
@@ -58,7 +57,6 @@ const thresholdOptions = computed(() => [
 // Селект опции для выбора пользователей
 const userSelectOptions = computed(() =>
   allUsers.value
-    .filter(user => String(user.id) !== String(userStore.id))
     .map(user => ({
       value: user.id,
       label: user.workPosition ? `${user.fio} (${user.workPosition})` : user.fio,
@@ -156,7 +154,6 @@ async function loadAndCacheUsers() {
 
 async function submit() {
   errorMsg.value = ''
-  approverIds.value = approverIds.value.filter(id => String(id) !== String(userStore.id))
   if (!comment.value.trim()) {
     errorMsg.value = t('approval.form.error.comment_required')
     return
