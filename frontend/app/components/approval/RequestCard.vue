@@ -53,6 +53,44 @@ const approverNamesText = computed(() => {
 })
 
 const eventCount = computed(() => props.request.events?.length ?? 0)
+
+type B24Window = Window & {
+  BX24?: {
+    openPath?: (path: string, callback?: (result: unknown) => void) => void
+  }
+}
+
+function toBitrixPath(rawUrl: string): string {
+  const value = String(rawUrl || '').trim()
+  if (!value) {
+    return ''
+  }
+  if (value.startsWith('/')) {
+    return value
+  }
+  try {
+    const parsed = new URL(value)
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return ''
+  }
+}
+
+function openFilePreview(rawUrl: string) {
+  const url = String(rawUrl || '').trim()
+  if (!url || typeof window === 'undefined') {
+    return
+  }
+
+  const path = toBitrixPath(url)
+  const bx24 = (window as B24Window).BX24
+  if (path && bx24?.openPath) {
+    bx24.openPath(path)
+    return
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
 </script>
 
 <template>
@@ -82,18 +120,16 @@ const eventCount = computed(() => props.request.events?.length ?? 0)
     <!-- Attached files -->
     <div v-if="fileList.length > 0" class="mt-2 flex flex-wrap gap-1">
       <template v-for="(file, idx) in fileList" :key="idx">
-        <a
+        <button
           v-if="file.url"
-          :href="file.url"
-          target="_blank"
-          rel="noopener noreferrer"
+          type="button"
           class="inline-flex items-center gap-1 text-xs text-b24-blue-500 hover:text-b24-blue-700 bg-b24-base-50 rounded px-2 py-0.5 truncate max-w-[180px]"
           :title="file.name"
-          @click.stop
+          @click.stop="openFilePreview(file.url)"
         >
           <Attach2Icon class="h-3 w-3 flex-shrink-0" />
           <span class="truncate">{{ file.name }}</span>
-        </a>
+        </button>
         <span
           v-else
           class="inline-flex items-center gap-1 text-xs text-b24-base-500 bg-b24-base-50 rounded px-2 py-0.5 truncate max-w-[180px]"
