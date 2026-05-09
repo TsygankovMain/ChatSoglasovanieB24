@@ -17,7 +17,7 @@ if [[ -z "${VIRTUAL_HOST:-}" && -n "${APP_URL:-}" ]]; then
 fi
 
 missing=0
-for name in CLIENT_ID CLIENT_SECRET JWT_SECRET VIRTUAL_HOST; do
+for name in JWT_SECRET VIRTUAL_HOST; do
   value="${!name:-}"
   if [[ -z "$value" ]]; then
     echo "Missing required environment variable: $name" >&2
@@ -26,7 +26,7 @@ for name in CLIENT_ID CLIENT_SECRET JWT_SECRET VIRTUAL_HOST; do
 done
 
 if [[ "$missing" -ne 0 ]]; then
-  echo "Refusing to start production container with incomplete Bitrix24/Django configuration." >&2
+  echo "Refusing to start production container with incomplete Django configuration." >&2
   exit 1
 fi
 

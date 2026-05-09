@@ -5,14 +5,16 @@ No database persistence — created from JWT, OAuth placement data, or webhook a
 Replaces both Bitrix24Account and ApplicationInstallation models.
 """
 
+from __future__ import annotations
+
 from datetime import timedelta
 
 import jwt
 
-from b24pysdk import AbstractBitrixToken, BitrixApp, BitrixToken, Client
+from b24pysdk import AbstractBitrixToken, BitrixApp, Client
 from b24pysdk.bitrix_api.credentials import OAuthPlacementData
 from b24pysdk.bitrix_api.events import PortalDomainChangedEvent, OAuthTokenRenewedEvent
-from b24pysdk.error import BitrixAPIError, BitrixValidationError
+from b24pysdk.error import BitrixValidationError
 from b24pysdk.utils.functional import Classproperty
 
 from django.utils import timezone
@@ -168,24 +170,44 @@ class B24AuthContext(AbstractBitrixToken):
     # ===== Factory: from OAuth placement data (frontend install/auth flow) =====
 
     @classmethod
-    def from_oauth_placement_data(cls, oauth_placement_data: "OAuthPlacementData") -> "B24AuthContext":
-        try:
-            bitrix_token = BitrixToken.from_oauth_placement_data(
-                oauth_placement_data, bitrix_app=cls.bitrix_app
-            )
-            app_info = bitrix_token.get_app_info().result
-        except BitrixAPIError as error:
-            raise BitrixValidationError(error.message) from error
+    def from_oauth_placement_data(
+        cls,
+        oauth_placement_data: "OAuthPlacementData",
+        raw_placement_data: dict | None = None,
+    ) -> "B24AuthContext":
+        """Build request auth from Bitrix24 iframe/install POST data.
+
+        Marketplace apps may not have CLIENT_ID/CLIENT_SECRET available before
+        publication. The simplified Bitrix24 OAuth flow already passes a valid
+        AUTH_ID/REFRESH_ID pair into the iframe, so do not call app.info here:
+        that server-side validation requires the app secret and breaks pre-prod
+        marketplace installs.
+        """
+        raw = raw_placement_data or {}
+
+        def to_int(value, fallback: int = 0) -> int:
+            try:
+                return int(value or fallback)
+            except (TypeError, ValueError):
+                return fallback
+
+        user_id = raw.get("user_id") or raw.get("USER_ID") or raw.get("USER") or 0
+        app_version = raw.get("appVersion") or raw.get("APP_VERSION") or raw.get("VERSION") or 0
+        scope = raw.get("scope") or raw.get("SCOPE") or raw.get("current_scope") or []
+        if isinstance(scope, str):
+            scope = [item.strip() for item in scope.split(",") if item.strip()]
 
         return cls(
-            b24_user_id=app_info.user_id,
+            b24_user_id=to_int(user_id),
             member_id=oauth_placement_data.member_id,
             domain_url=oauth_placement_data.domain,
             access_token=oauth_placement_data.oauth_token.access_token,
             refresh_token=oauth_placement_data.oauth_token.refresh_token,
             expires=int(oauth_placement_data.oauth_token.expires.timestamp()),
-            application_version=app_info.install.version,
-            status=oauth_placement_data.status,
+            expires_in=oauth_placement_data.oauth_token.expires_in,
+            application_version=to_int(app_version),
+            status=str(oauth_placement_data.status),
+            current_scope=scope,
         )
 
     # ===== Factory: from webhook auth payload (Bitrix24 -> our backend) =====

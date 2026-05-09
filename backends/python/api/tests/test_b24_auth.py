@@ -5,6 +5,7 @@ import unittest
 import tests.conftest  # noqa: F401 — Django bootstrap
 
 from b24pysdk.error import BitrixValidationError
+from b24pysdk.bitrix_api.credentials import OAuthPlacementData
 
 from main.b24_auth import B24AuthContext
 
@@ -68,6 +69,35 @@ class B24AuthContextWebhookFactoryTests(unittest.TestCase):
     def test_from_webhook_auth_rejects_non_dict(self):
         with self.assertRaises(BitrixValidationError):
             B24AuthContext.from_webhook_auth(None)
+
+
+class B24AuthContextMarketplaceFactoryTests(unittest.TestCase):
+    def test_from_oauth_placement_data_does_not_require_app_secret(self):
+        raw = {
+            "DOMAIN": "portal.bitrix24.ru",
+            "PROTOCOL": "1",
+            "LANG": "ru",
+            "APP_SID": "sid",
+            "AUTH_ID": "access-token",
+            "AUTH_EXPIRES": "3600",
+            "REFRESH_ID": "refresh-token",
+            "member_id": "member-1",
+            "status": "F",
+            "user_id": "123",
+            "appVersion": "7",
+            "SCOPE": "im,imbot,entity,disk,placement,user_basic",
+        }
+
+        placement_data = OAuthPlacementData.from_dict(raw)
+        ctx = B24AuthContext.from_oauth_placement_data(placement_data, raw)
+
+        self.assertEqual(ctx.access_token, "access-token")
+        self.assertEqual(ctx.refresh_token, "refresh-token")
+        self.assertEqual(ctx.domain_url, "portal.bitrix24.ru")
+        self.assertEqual(ctx.member_id, "member-1")
+        self.assertEqual(ctx.b24_user_id, 123)
+        self.assertEqual(ctx.application_version, 7)
+        self.assertIn("placement", ctx.current_scope)
 
 
 if __name__ == "__main__":  # pragma: no cover

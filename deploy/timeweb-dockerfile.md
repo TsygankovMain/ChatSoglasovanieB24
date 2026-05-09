@@ -32,9 +32,7 @@
 BUILD_TARGET=production
 NODE_ENV=production
 JWT_ALGORITHM=HS256
-JWT_SECRET=replace_with_openssl_rand_hex_32
-CLIENT_ID=local.xxxxxxxxxxxxxxxx
-CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+JWT_SECRET=GENERATE_NEW_SECRET_IN_TIMEWEB
 VIRTUAL_HOST=https://your-app-domain.twc1.net
 NUXT_PUBLIC_APP_URL=https://your-app-domain.twc1.net
 NUXT_PUBLIC_API_URL=
@@ -44,9 +42,11 @@ NUXT_PUBLIC_API_URL=
 
 `VIRTUAL_HOST` должен быть публичным HTTPS URL этого же приложения без завершающего слеша. Он используется Django для `ALLOWED_HOSTS`, CSRF/CORS и webhook URL для Bitrix24.
 
+Для Marketplace/simple OAuth `CLIENT_ID` и `CLIENT_SECRET` не требуются на этапе установки. Не добавляйте их как `CHANGE_ME`: оставьте переменные пустыми/отсутствующими, если Bitrix24 Marketplace еще не выдал ключи приложения.
+
 ## Bitrix24
 
-В настройках локального приложения Bitrix24 укажите домен Timeweb:
+В настройках Marketplace-приложения Bitrix24 укажите домен Timeweb:
 
 | Поле | Значение |
 |------|----------|

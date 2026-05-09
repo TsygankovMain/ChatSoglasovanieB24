@@ -48,7 +48,10 @@ def auth_required(view_func):
             # First-touch flow: frontend posts raw OAuth placement data, no JWT yet.
             try:
                 oauth_placement_data = OAuthPlacementData.from_dict(cast(JSONDict, request.data))
-                request.bitrix24_account = B24AuthContext.from_oauth_placement_data(oauth_placement_data)
+                request.bitrix24_account = B24AuthContext.from_oauth_placement_data(
+                    oauth_placement_data,
+                    request.data,
+                )
 
             except BitrixValidationError as error:
                 return JsonResponse({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)

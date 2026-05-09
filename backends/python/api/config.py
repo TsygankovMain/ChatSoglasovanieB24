@@ -31,8 +31,8 @@ def load_config() -> Config:
         cloudpub_token=env.str("CLOUDPUB_TOKEN", ""),
         jwt_secret=env.str("JWT_SECRET", "default_jwt_secret"),
         jwt_algorithm=env.str("JWT_ALGORITHM", "HS256"),
-        client_id=env.str("CLIENT_ID", "client_id"),
-        client_secret=env.str("CLIENT_SECRET", "client_secret"),
+        client_id=env.str("CLIENT_ID", ""),
+        client_secret=env.str("CLIENT_SECRET", ""),
         app_base_url=env.str("VIRTUAL_HOST", "app_base_url"),
     )
 
