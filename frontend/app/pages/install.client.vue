@@ -87,7 +87,7 @@ const steps = ref<Record<string, IStep>>({
         handler: `${appUrl}/`
       }
       const options = {
-        iconName: 'chat-compose',
+        iconName: 'fa-check-circle',
         context: 'ALL',
         role: 'USER',
         extranet: 'N',
