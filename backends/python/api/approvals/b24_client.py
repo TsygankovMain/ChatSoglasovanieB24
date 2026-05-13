@@ -514,11 +514,11 @@ class ApprovalB24Client:
 
         if options is None:
             options = {
-                "iconName": "fa-check-circle",
+                "iconName": "fa-robot",
                 "context": "ALL",
                 "role": "USER",
                 "extranet": "N",
-                "color": "LIGHT_BLUE",
+                "color": "AZURE",
                 "width": "400",
                 "height": "300",
             }

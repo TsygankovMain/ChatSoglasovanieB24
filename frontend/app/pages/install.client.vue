@@ -87,11 +87,11 @@ const steps = ref<Record<string, IStep>>({
         handler: `${appUrl}/`
       }
       const options = {
-        iconName: 'fa-check-circle',
+        iconName: 'fa-robot',
         context: 'ALL',
         role: 'USER',
         extranet: 'N',
-        color: 'LIGHT_BLUE',
+        color: 'AZURE',
         width: 400,
         height: 300
       }
