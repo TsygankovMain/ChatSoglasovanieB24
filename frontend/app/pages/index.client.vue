@@ -2,7 +2,6 @@
 import type { B24Frame } from '@bitrix24/b24jssdk'
 import { onMounted } from 'vue'
 import { useDashboard } from '@bitrix24/b24ui-nuxt/utils/dashboard'
-import PlusLIcon from '@bitrix24/b24icons-vue/outline/PlusLIcon'
 
 const { t, locales: localesI18n, setLocale } = useI18n()
 
@@ -143,28 +142,18 @@ watch(showCreateForm, async () => {
         variant="outline"
         class="border border-b24-base-200"
       >
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex gap-2">
-            <B24Button
-              :label="t('approval.tab.my')"
-              :color="activeTab === 'my' ? 'primary' : 'secondary'"
-              variant="ghost"
-              @click="activeTab = 'my'"
-            />
-            <B24Button
-              :label="t('approval.tab.incoming')"
-              :color="activeTab === 'incoming' ? 'primary' : 'secondary'"
-              variant="ghost"
-              @click="activeTab = 'incoming'"
-            />
-          </div>
+        <div class="flex gap-2">
           <B24Button
-            v-if="!showCreateForm"
-            :icon="PlusLIcon"
-            :label="t('approval.action.create')"
-            color="air-primary"
-            :disabled="isContextMissing"
-            @click="showCreateForm = true"
+            :label="t('approval.tab.my')"
+            :color="activeTab === 'my' ? 'primary' : 'secondary'"
+            variant="ghost"
+            @click="activeTab = 'my'"
+          />
+          <B24Button
+            :label="t('approval.tab.incoming')"
+            :color="activeTab === 'incoming' ? 'primary' : 'secondary'"
+            variant="ghost"
+            @click="activeTab = 'incoming'"
           />
         </div>
       </B24Card>
