@@ -15,6 +15,23 @@
 
 ---
 
+## 2026-06-01
+
+### Added
+- **Мобильная встройка `IMMOBILE_CONTEXT_MENU`**: создание запроса на согласование из контекстного меню сообщения в мобильном приложении Bitrix24 — аналог десктопного `IM_CONTEXT_MENU`. Регистрируется при установке (`backends/python/api/main/views.py`, `install()`), задекларирована в `app.json`. Фронтовый обработчик `frontend/app/pages/handler/placement-im-context-menu.client.vue` переиспользован без изменений (универсален для desktop/mobile, gracefully деградирует при отсутствии `resizeWindowAuto`).
+- В манифест `app.json` добавлены ранее не задекларированные встройки `IM_CONTEXT_MENU` и `IMMOBILE_CONTEXT_MENU` (приведены в соответствие с кодом установки).
+
+### Changed
+- Заголовок приложения (`page.index.seo.title`) сменён с заглушки `[playground] Тестирование приложения` на боевое «Согласования в чате» во всех 19 локалях.
+
+### Removed
+- Убрана всегда-неактивная кнопка «Создать запрос» из standalone-режима (вне чата нет `dialogId` → кнопка была вечно `disabled`): `frontend/app/pages/index.client.vue`. Создание доступно из чата.
+
+### Docs
+- Консолидация документации в `docs/`: `README.md` (верхний индекс + конвенция), `CHANGELOG.md`, `RELEASES.md`, `architecture/feature-map.md`, `architecture/overview.md`; корневой `CHANGELOG.md` сведён к указателю.
+
+---
+
 ## Sprint 3 (2026-04-26)
 
 ### Added

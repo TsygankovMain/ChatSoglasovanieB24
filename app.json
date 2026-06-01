@@ -38,6 +38,40 @@
         "height": 300,
         "fitWindow": true
       }
+    },
+    {
+      "code": "IM_CONTEXT_MENU",
+      "title": {
+        "ru": "Согласовать",
+        "en": "Request approval"
+      },
+      "description": {
+        "ru": "Создать запрос на согласование на основе сообщения",
+        "en": "Create an approval request based on a message"
+      },
+      "handler": "https://__APP_DOMAIN__/handler/placement-im-context-menu",
+      "options": {
+        "context": "ALL",
+        "role": "USER",
+        "extranet": "N"
+      }
+    },
+    {
+      "code": "IMMOBILE_CONTEXT_MENU",
+      "title": {
+        "ru": "Согласовать",
+        "en": "Request approval"
+      },
+      "description": {
+        "ru": "Создать запрос на согласование из мобильного приложения Битрикс24",
+        "en": "Create an approval request from the Bitrix24 mobile app"
+      },
+      "handler": "https://__APP_DOMAIN__/handler/placement-im-context-menu",
+      "options": {
+        "context": "ALL",
+        "role": "USER",
+        "extranet": "N"
+      }
     }
   ],
   "events": [

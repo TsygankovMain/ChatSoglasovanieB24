@@ -117,10 +117,15 @@
 | **Точка входа индекса** | — | `frontend/app/pages/index.client.vue` | 1-30 | `onMounted`: вызов `initApp()`, получение контекста B24Frame. |
 | **Инициализация фронта** | — | `frontend/app/composables/useAppInit.ts` | — | Composable для инициализации: проверка контекста B24Frame, получение токена. |
 | **Страница установки** | — | `frontend/app/pages/install.client.vue` | — | UI для установки: выбор портала, валидация placement.bind, кнопка install. |
-| **Backend endpoint** | — | `backends/python/api/main/views.py` | 94-125 | Функция `install()`: POST `/api/install`, координирует инициализацию (entity, bot, placement). |
+| **Backend endpoint** | — | `backends/python/api/main/views.py` | 94-150 | Функция `install()`: POST `/api/install`, координирует инициализацию (entity, bot, 3 placement). |
 | **Entity создание** | ApprovalB24Client | `backends/python/api/approvals/b24_client.py` | 535-570 | Метод `create_entity_storages()`: `entity.add` для appr_requests, approval_votes, appr_events. |
 | **Регистрация бота** | ApprovalB24Client | `backends/python/api/approvals/b24_client.py` | 403-425 | Метод `register_bot()`: `imbot.register`, регистрация vote-команд, сохранение BOT_ID в app.option. |
-| **Привязка placement** | ApprovalB24Client | `backends/python/api/approvals/b24_client.py` | 491-533 | Метод `bind_placement()`: `placement.bind` для `IM_TEXTAREA` с опциями (iconName, color, width, height). |
+| **Привязка placement (метод)** | ApprovalB24Client | `backends/python/api/approvals/b24_client.py` | 491-533 | Метод `bind_placement()`: rebind через `placement.unbind`+`placement.bind`. Для контекстных меню options = context/role/extranet. |
+| **Точка входа: панель ввода (десктоп)** | — | `backends/python/api/main/views.py` | ~111 | `IM_TEXTAREA` → handler `/` (открывает основное приложение в чате). |
+| **Точка входа: меню сообщения (десктоп)** | — | `backends/python/api/main/views.py` | ~117 | `IM_CONTEXT_MENU` → handler `/handler/placement-im-context-menu`. |
+| **Точка входа: меню сообщения (мобильное)** | — | `backends/python/api/main/views.py` | ~137 | `IMMOBILE_CONTEXT_MENU` → тот же handler `/handler/placement-im-context-menu` (мобильный аналог IM_CONTEXT_MENU). |
+| **Обработчик контекстного меню (фронт)** | — | `frontend/app/pages/handler/placement-im-context-menu.client.vue` | 1-220 | Универсальная страница desktop+mobile: читает DIALOG_ID/MESSAGE_ID, подгружает текст сообщения (im.dialog.messages.get), открывает форму с prefill. |
+| **Манифест placements** | — | `app.json` | 24-78 | Декларация 3 встроек: IM_TEXTAREA, IM_CONTEXT_MENU, IMMOBILE_CONTEXT_MENU. |
 
 ---
 

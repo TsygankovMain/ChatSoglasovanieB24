@@ -128,6 +128,26 @@ def install(request: AuthorizedRequest):
     except Exception as e:
         steps["placement_context_menu"] = str(e)
 
+    # Mobile counterpart of IM_CONTEXT_MENU: same handler/form, served inside
+    # the Bitrix24 mobile app webview. Mobile context menu accepts only
+    # context/role/extranet (no iconName/color/width/height), exactly like
+    # IM_CONTEXT_MENU. The frontend handler reads DIALOG_ID/MESSAGE_ID from
+    # placement.options and degrades gracefully if resize isn't available.
+    try:
+        b24.bind_placement(
+            "IMMOBILE_CONTEXT_MENU",
+            f"{config.app_base_url}/handler/placement-im-context-menu",
+            title="Согласовать",
+            options={
+                "context": "ALL",
+                "role": "USER",
+                "extranet": "N",
+            },
+        )
+        steps["placement_immobile_context_menu"] = "ok"
+    except Exception as e:
+        steps["placement_immobile_context_menu"] = str(e)
+
     logger.info("Install steps: %s", steps)
     return JsonResponse({"message": "Installation successful", "steps": steps})
 
