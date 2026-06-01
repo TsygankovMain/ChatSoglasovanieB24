@@ -13,7 +13,8 @@
     "entity",
     "disk",
     "placement",
-    "user_basic"
+    "user_basic",
+    "mobile"
   ],
   "min_bitrix24_tier": "standard",
   "endpoints": {
