@@ -8,6 +8,14 @@ _THRESHOLD_LABELS = {
     "majority": "Большинство",
 }
 
+# Version 1 is switched off on this date; portals move to version 2 only when an
+# administrator updates the app, so every bot message carries the reminder.
+V1_SHUTDOWN_DATE = "07.10.2026"
+UPDATE_NOTICE = (
+    f"[B]Вышла версия 2 приложения «Согласование в чате».[/B] Версия 1 будет отключена {V1_SHUTDOWN_DATE}. "
+    "Попросите администратора портала обновить приложение в Маркете — запросы и история сохранятся."
+)
+
 _STATUS_LABELS = {
     "collecting": "⏳ Ожидает решения",
     "approved": "✅ Одобрено",
@@ -96,4 +104,5 @@ def build_approval_message(
     ]
     if last_action_text:
         lines.extend(["", f"🕒 Последнее действие: {last_action_text}"])
+    lines.extend(["", UPDATE_NOTICE])
     return "\n".join(lines)

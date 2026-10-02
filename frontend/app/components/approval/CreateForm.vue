@@ -17,6 +17,16 @@ const { t } = useI18n()
 const { $initializeB24Frame } = useNuxtApp()
 const approval = useApproval()
 const { files, addFiles, removeFile, clear: clearFiles } = useApprovalFiles()
+const userStore = useUserStore()
+
+// Version 1 is being switched off: the form tells everyone, and an administrator
+// additionally gets one notification in the bell.
+const V1_SHUTDOWN_DATE = '07.10.2026'
+const UPDATE_NOTICE_OPTION = 'v2UpdateNoticeSent'
+const updateNoticeText = computed(() => t(
+  userStore.isAdmin ? 'approval.update_notice.admin' : 'approval.update_notice.user',
+  { date: V1_SHUTDOWN_DATE },
+))
 
 type PortalUser = {
   id: string
@@ -227,7 +237,26 @@ async function submit() {
   }
 }
 
+async function notifyAdminAboutUpdate() {
+  if (!userStore.isAdmin || !userStore.id) return
+  try {
+    const b24 = await ensureB24Frame()
+    const options = (await b24.callMethod('user.option.get', {})).getData().result as Record<string, unknown> | null
+    if (options && options[UPDATE_NOTICE_OPTION]) return
+    await b24.callMethod('im.notify.system.add', {
+      USER_ID: userStore.id,
+      MESSAGE: t('approval.update_notice.admin', { date: V1_SHUTDOWN_DATE }),
+    })
+    await b24.callMethod('user.option.set', { options: { [UPDATE_NOTICE_OPTION]: 'Y' } })
+  } catch (error) {
+    // The reminder must never get in the way of creating a request.
+    if (import.meta.dev) console.warn('update notice failed:', error)
+  }
+}
+
 onMounted(() => {
+  notifyAdminAboutUpdate()
+
   // Загружаем пользователей в фоне (не блокируем UI). Ошибки уже обработаны
   // внутри loadAndCacheUsers и проброшены в usersLoadError для UI; здесь —
   // финальный safety-net на случай неотловленной ошибки.
@@ -239,6 +268,9 @@ onMounted(() => {
 
 <template>
   <div :class="props.compact ? 'space-y-2' : 'space-y-3'">
+    <p class="text-xs text-b24-amber-700 bg-b24-amber-50 border border-b24-amber-200 rounded px-2 py-1.5">
+      {{ updateNoticeText }}
+    </p>
     <div>
       <label class="block text-xs font-medium text-b24-base-600 mb-0.5">
         {{ t('approval.form.comment') }} <span class="text-b24-red-500">*</span>
