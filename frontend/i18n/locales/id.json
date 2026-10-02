@@ -110,5 +110,15 @@
       },
       "action": "Perbarui status"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "Tampilkan lagi"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "Maksimal {max} pemberi persetujuan per permintaan"
+      }
+    }
   }
 }

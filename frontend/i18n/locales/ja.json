@@ -110,5 +110,15 @@
       },
       "action": "ステータスを更新"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "さらに表示"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "1件の申請につき承認者は{max}人までです"
+      }
+    }
   }
 }

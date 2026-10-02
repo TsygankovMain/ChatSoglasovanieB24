@@ -34,6 +34,15 @@ const currentList = computed(() =>
   activeTab.value === 'my' ? approval.myRequests.value : approval.incomingRequests.value
 )
 
+const hasMore = computed(() =>
+  activeTab.value === 'my' ? approval.hasMoreMy.value : approval.hasMoreIncoming.value
+)
+
+async function loadMore() {
+  await approval.loadMore(activeTab.value === 'my' ? 'initiator' : 'approver')
+  await fitWindow()
+}
+
 async function fitWindow() {
   try {
     await $b24?.parent.fitWindow()
@@ -205,6 +214,16 @@ watch(showCreateForm, async () => {
           @click="approval.getById($event)"
           @cancel="onCancel"
         />
+        <div v-if="hasMore" class="flex justify-center pt-1">
+          <B24Button
+            :label="t('approval.action.load_more')"
+            color="secondary"
+            variant="ghost"
+            size="sm"
+            :loading="approval.isLoadingMore.value"
+            @click="loadMore"
+          />
+        </div>
       </div>
     </div>
   </div>

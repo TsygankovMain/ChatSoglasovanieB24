@@ -110,5 +110,15 @@
       },
       "action": "تحديث الحالة"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "عرض المزيد"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "لا يزيد عن {max} من الموافقين لكل طلب"
+      }
+    }
   }
 }

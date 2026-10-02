@@ -47,6 +47,8 @@ export interface ApprovalRequest {
   events?: ApprovalEvent[]
 }
 
+export const APPROVAL_PAGE_SIZE = 20
+
 export const useApiStore = defineStore(
   'api',
   () => {
@@ -103,23 +105,6 @@ export const useApiStore = defineStore(
       } catch {
         throw new Error('Backend health check failed')
       }
-    }
-
-    // API
-    const getEnum = async (): Promise<string[]> => {
-      return await $api('/api/enum', {
-        headers: {
-          Authorization: `Bearer ${tokenJWT.value}`
-        }
-      })
-    }
-
-    const getList = async (): Promise<string[]> => {
-      return await $api('/api/list', {
-        headers: {
-          Authorization: `Bearer ${tokenJWT.value}`
-        }
-      })
     }
 
     const postInstall = async (data: Record<string, unknown>): Promise<Record<string, unknown>> => {
@@ -200,10 +185,14 @@ export const useApiStore = defineStore(
       }
     }
 
-    const approvalList = async (role: 'initiator' | 'approver'): Promise<{ items: ApprovalRequest[] }> => {
+    const approvalList = async (
+      role: 'initiator' | 'approver',
+      offset = 0,
+      limit = APPROVAL_PAGE_SIZE,
+    ): Promise<{ items: ApprovalRequest[], has_more: boolean }> => {
       return await $api('/api/approval/list', {
         headers: { Authorization: `Bearer ${tokenJWT.value}` },
-        params: { role },
+        params: { role, offset, limit },
       })
     }
 
@@ -261,8 +250,6 @@ export const useApiStore = defineStore(
     return {
       checkHealth,
       init,
-      getEnum,
-      getList,
       postInstall,
       approvalCreate,
       approvalList,

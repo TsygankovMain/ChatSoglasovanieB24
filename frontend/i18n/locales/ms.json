@@ -110,5 +110,15 @@
       },
       "action": "Kemas kini status"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "Tunjukkan lagi"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "Tidak lebih daripada {max} pelulus bagi setiap permintaan"
+      }
+    }
   }
 }

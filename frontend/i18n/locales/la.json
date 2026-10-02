@@ -110,5 +110,15 @@
       },
       "action": "Actualizar estado"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "Mostrar más"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "No más de {max} aprobadores por solicitud"
+      }
+    }
   }
 }

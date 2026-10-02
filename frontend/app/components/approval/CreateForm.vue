@@ -17,6 +17,10 @@ const { t } = useI18n()
 const { $initializeB24Frame } = useNuxtApp()
 const approval = useApproval()
 const { files, addFiles, removeFile, clear: clearFiles } = useApprovalFiles()
+const userStore = useUserStore()
+
+// Mirrors the server-side limit in approvals/rules.py.
+const MAX_APPROVERS = 10
 
 type PortalUser = {
   id: string
@@ -57,6 +61,8 @@ const thresholdOptions = computed(() => [
 // Селект опции для выбора пользователей
 const userSelectOptions = computed(() =>
   allUsers.value
+    // The initiator cannot vote on their own request.
+    .filter(user => user.id !== String(userStore.id))
     .map(user => ({
       value: user.id,
       label: user.workPosition ? `${user.fio} (${user.workPosition})` : user.fio,
@@ -160,6 +166,10 @@ async function submit() {
   }
   if (approverIds.value.length === 0) {
     errorMsg.value = t('approval.form.error.approvers_required')
+    return
+  }
+  if (approverIds.value.length > MAX_APPROVERS) {
+    errorMsg.value = t('approval.form.error.too_many_approvers', { max: MAX_APPROVERS })
     return
   }
   if (!props.dialogId.trim()) {

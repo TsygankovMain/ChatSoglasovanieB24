@@ -132,7 +132,8 @@
     },
     "action": {
       "create": "Create Request",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "load_more": "Show more"
     },
     "context": {
       "missing_title": "Chat context is missing",
@@ -163,7 +164,8 @@
         "approvers_required": "Add at least one approver",
         "dialog_required": "Chat context was not found. Reopen the app from the target chat and try again.",
         "user_search_failed": "Failed to load users list",
-        "generic": "Error creating request"
+        "generic": "Error creating request",
+        "too_many_approvers": "No more than {max} approvers per request"
       },
       "warning": {
         "bot_issue": "Request created, but messages to approvers were not fully delivered: {details}. Verify the bot is installed or notify approvers manually.",
