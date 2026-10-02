@@ -251,13 +251,23 @@ const stepCode = ref<string>('init' as const)
 // region Actions ////
 async function makeInit(): Promise<void> {
   if (steps.value.init) {
-    const response = await $b24.callBatch({
-      appInfo: { method: 'app.info' },
-      profile: { method: 'profile' },
-      placementList: { method: 'placement.get' }
-    })
+    // One call per method instead of a batch: the SDK reduces a failed batch to
+    // "AjaxError: 200", which hides both the method and the portal's reason.
+    const call = async (method: string): Promise<unknown> => {
+      try {
+        return (await $b24.callMethod(method, {})).getData().result
+      } catch (error: unknown) {
+        const reason = error instanceof Error ? error.message : String(error)
+        throw new Error(`Bitrix24 REST ${method}: ${reason}`, { cause: error })
+      }
+    }
+    const [appInfo, profile, placementList] = await Promise.all([
+      call('app.info'),
+      call('profile'),
+      call('placement.get')
+    ])
 
-    steps.value.init.data = response.getData() as {
+    steps.value.init.data = { appInfo, profile, placementList } as {
       appInfo: {
         ID: number
         CODE: string

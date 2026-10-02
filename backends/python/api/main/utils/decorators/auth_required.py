@@ -2,7 +2,8 @@
 
 Resolves the per-request B24AuthContext from either:
   1. JWT in Authorization: Bearer <token> header (frontend, after /api/get_token)
-  2. OAuth placement data in request body (frontend, on first install/launch)
+  2. OAuth placement data in request body (frontend, on first install/launch);
+     the token owner is confirmed by the portal before the context is trusted
 
 No database lookup. Auth context is held in-memory for the duration of the request.
 """
@@ -18,7 +19,7 @@ from django.http import JsonResponse, HttpRequest
 from b24pysdk.error import BitrixValidationError
 from b24pysdk.utils.types import JSONDict
 
-from ...b24_auth import B24AuthContext
+from ...b24_auth import B24AuthContext, IdentityError
 from .collect_request_data import collect_request_data
 
 
@@ -52,6 +53,13 @@ def auth_required(view_func):
 
             except BitrixValidationError as error:
                 return JsonResponse({"error": str(error)}, status=HTTPStatus.BAD_REQUEST)
+
+            # The JWT issued from this context is trusted later without a
+            # round-trip, so the user id must be confirmed by the portal now.
+            try:
+                request.bitrix24_account.verify_identity()
+            except IdentityError:
+                return JsonResponse({"error": "Bitrix24 authorization rejected"}, status=HTTPStatus.UNAUTHORIZED)
 
         return view_func(request, *args, **kwargs)
 

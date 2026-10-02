@@ -52,7 +52,15 @@ const approverNamesText = computed(() => {
   return names.join(', ')
 })
 
+// Lists arrive without the event log; it is fetched when the journal is opened.
+const isLogLoaded = computed(() => props.request.events !== undefined)
 const eventCount = computed(() => props.request.events?.length ?? 0)
+
+function onLogToggle(event: Event) {
+  if ((event.target as HTMLDetailsElement).open && !isLogLoaded.value) {
+    emit('click', props.request.id)
+  }
+}
 
 type B24Window = Window & {
   BX24?: {
@@ -145,12 +153,17 @@ function openFilePreview(rawUrl: string) {
       <ApprovalVoteStatus :request="request" />
     </div>
 
-    <details class="mt-3 rounded-lg border border-b24-base-200 bg-b24-base-50/50 px-3 py-2" @click.stop>
+    <details
+      class="mt-3 rounded-lg border border-b24-base-200 bg-b24-base-50/50 px-3 py-2"
+      @click.stop
+      @toggle="onLogToggle"
+    >
       <summary class="cursor-pointer text-xs font-medium text-b24-base-600">
-        {{ t('approval.event.log_title') }} <span class="text-b24-base-400">({{ eventCount }})</span>
+        {{ t('approval.event.log_title') }} <span v-if="isLogLoaded" class="text-b24-base-400">({{ eventCount }})</span>
       </summary>
       <div class="mt-2">
-        <ApprovalEventLog :request="request" :max-items="6" />
+        <ApprovalEventLog v-if="isLogLoaded" :request="request" :max-items="6" />
+        <B24Progress v-else animation="carousel" size="xs" />
       </div>
     </details>
 

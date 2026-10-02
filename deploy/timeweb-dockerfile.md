@@ -32,7 +32,7 @@
 BUILD_TARGET=production
 NODE_ENV=production
 JWT_ALGORITHM=HS256
-JWT_SECRET=GENERATE_NEW_SECRET_IN_TIMEWEB
+JWT_SECRET=<openssl rand -hex 32>
 VIRTUAL_HOST=https://your-app-domain.twc1.net
 NUXT_PUBLIC_APP_URL=https://your-app-domain.twc1.net
 NUXT_PUBLIC_API_URL=

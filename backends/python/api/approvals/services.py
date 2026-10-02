@@ -250,6 +250,10 @@ class ApprovalService:
         dialog_id: str,
         uploaded_files: list | None = None,
     ) -> dict:
+        # Checked before anything is written to the portal disk or storage.
+        deduped_approvers = self._dedupe_user_ids(approver_ids)
+        rules.validate_approvers(str(initiator_id), deduped_approvers)
+
         # 1. Create disk folder and upload files (if any)
         disk_folder_id = ""
         file_ids: list[str] = []
@@ -271,10 +275,6 @@ class ApprovalService:
                     file_names.append(file_obj.name)
 
         # Entity storages are ensured in __init__ via app.option flag — no need to recreate.
-
-        deduped_approvers = self._dedupe_user_ids(approver_ids)
-        if not deduped_approvers:
-            raise RuntimeError("Добавьте хотя бы одного согласующего.")
 
         # 2. Save request to Entity Storage
         request_id = self.b24.create_request_item(
@@ -385,9 +385,7 @@ class ApprovalService:
                     len(bot_message_ids),
                 )
 
-            if not deduped_approvers:
-                bot_issue = "Approver recipients are empty"
-            elif failed_details:
+            if failed_details:
                 bot_issue = "Failed recipients: " + "; ".join(failed_details)
                 logger.warning("[service][create] partial publish request_id=%s issue=%s", request_id, bot_issue)
             elif not bot_message_ids:
@@ -407,12 +405,34 @@ class ApprovalService:
             "bot_dialog_ids": deduped_approvers,
         }
 
-    def list_requests(self, user_id: str, role: str) -> list:
+    def list_requests(self, user_id: str, role: str, offset: int = 0, limit: int = 20) -> tuple[list, bool]:
+        """One page of requests with votes; the event log and file links come with get_request."""
         if role == "initiator":
-            items = self.b24.get_requests_by_initiator(user_id)
+            items, has_more = self.b24.get_requests_by_initiator(user_id, offset, limit)
         else:
-            items = self.b24.get_requests_as_approver(user_id)
-        return [self._compose_request_payload(item) for item in items]
+            items, has_more = self.b24.get_requests_as_approver(user_id, offset, limit)
+
+        requests_data = [_format_request(item) for item in items]
+        votes_by_request = self.b24.get_votes_for_requests([r["id"] for r in requests_data])
+
+        user_ids: set[str] = set()
+        for request_data in requests_data:
+            votes = [_format_vote(v) for v in votes_by_request.get(request_data["id"], [])]
+            request_data["votes"] = votes
+            user_ids.add(request_data["initiator_id"])
+            user_ids.update(request_data["approver_ids"])
+            user_ids.update(vote["user_id"] for vote in votes)
+        user_names = self.b24.get_user_names([uid for uid in user_ids if uid])
+
+        def name_of(uid: str) -> str:
+            return user_names.get(uid, f"Пользователь {uid}")
+
+        for request_data in requests_data:
+            request_data["initiator_name"] = name_of(request_data["initiator_id"])
+            request_data["approver_names"] = {uid: name_of(uid) for uid in request_data["approver_ids"]}
+            for vote in request_data["votes"]:
+                vote["user_name"] = name_of(vote["user_id"])
+        return requests_data, has_more
 
     def get_request(self, request_id: str) -> dict | None:
         item = self.b24.get_request_by_id(request_id)

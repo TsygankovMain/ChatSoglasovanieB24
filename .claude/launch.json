@@ -4,32 +4,50 @@
     {
       "name": "ChatApprove - Frontend + Python (full stack)",
       "runtimeExecutable": "docker",
-      "runtimeArgs": ["compose", "--profile", "frontend", "--profile", "python", "--profile", "cloudpub", "up", "--build"],
+      "runtimeArgs": [
+        "compose",
+        "-f",
+        "docker-compose.dev.yml",
+        "--profile",
+        "frontend",
+        "--profile",
+        "python",
+        "--profile",
+        "cloudpub",
+        "up",
+        "--build"
+      ],
       "port": 3001
     },
     {
       "name": "ChatApprove - Frontend only",
       "runtimeExecutable": "docker",
-      "runtimeArgs": ["compose", "--profile", "frontend", "--profile", "cloudpub", "up", "--build"],
+      "runtimeArgs": [
+        "compose",
+        "-f",
+        "docker-compose.dev.yml",
+        "--profile",
+        "frontend",
+        "--profile",
+        "cloudpub",
+        "up",
+        "--build"
+      ],
       "port": 3001
     },
     {
       "name": "ChatApprove - Python API only",
       "runtimeExecutable": "docker",
-      "runtimeArgs": ["compose", "--profile", "python", "up", "--build"],
+      "runtimeArgs": [
+        "compose",
+        "-f",
+        "docker-compose.dev.yml",
+        "--profile",
+        "python",
+        "up",
+        "--build"
+      ],
       "port": 8002
-    },
-    {
-      "name": "ChatApprove - Database only",
-      "runtimeExecutable": "docker",
-      "runtimeArgs": ["compose", "up", "database"],
-      "port": 5433
-    },
-    {
-      "name": "ChatApprove - Frontend + PHP",
-      "runtimeExecutable": "docker",
-      "runtimeArgs": ["compose", "--profile", "frontend", "--profile", "php", "--profile", "cloudpub", "up", "--build"],
-      "port": 3001
     }
   ]
 }

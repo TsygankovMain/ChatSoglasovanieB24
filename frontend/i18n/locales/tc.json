@@ -110,5 +110,15 @@
       },
       "action": "更新狀態"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "顯示更多"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "每個請求最多 {max} 位審批人"
+      }
+    }
   }
 }

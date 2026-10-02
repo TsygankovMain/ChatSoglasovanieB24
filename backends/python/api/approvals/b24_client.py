@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 from datetime import datetime, timezone
+from itertools import islice
 import logging
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from core.b24_entity import (
     entity_add,
     entity_item_add,
     entity_item_get,
+    entity_item_iter,
     entity_item_property_add,
     entity_item_property_get,
     entity_item_update,
@@ -30,7 +32,28 @@ APPROVAL_COMMANDS = {
     },
 }
 
+# Entity storage has no "contains" index for JSON-encoded properties, so lookups
+# by approver or by bot message walk the newest requests. The cap bounds the
+# number of REST calls on portals with a long history.
+REQUEST_SCAN_LIMIT = 1000
+
 logger = logging.getLogger("approval")
+
+
+def _json_list(raw: object) -> list[str]:
+    if isinstance(raw, list):
+        return [str(v).strip() for v in raw if str(v).strip()]
+    if not isinstance(raw, str) or not raw.strip():
+        return []
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return [raw.strip()]
+    if isinstance(parsed, list):
+        return [str(v).strip() for v in parsed if str(v).strip()]
+    if isinstance(parsed, dict):
+        return [str(v).strip() for v in parsed.values() if str(v).strip()]
+    return [str(parsed).strip()] if parsed is not None and str(parsed).strip() else []
 
 
 class ApprovalB24Client:
@@ -145,67 +168,45 @@ class ApprovalB24Client:
         if items:
             return items[0]
 
-        # Fallback for requests where BOT_MESSAGE_ID stores JSON array of message ids.
-        all_items = entity_item_get(self.http, ENTITY_REQUESTS, sort={"ID": "DESC"})
-        for item in all_items:
+        # BOT_MESSAGE_ID holds a JSON array (one message per approver), which the
+        # exact-match filter above cannot see.
+        for item in entity_item_iter(
+            self.http, ENTITY_REQUESTS, sort={"ID": "DESC"}, max_items=REQUEST_SCAN_LIMIT,
+        ):
             props = item.get("PROPERTY_VALUES", {})
-            raw_value = props.get("BOT_MESSAGE_ID", "")
-            ids: list[str] = []
-            if isinstance(raw_value, str):
-                raw_value = raw_value.strip()
-                if raw_value:
-                    try:
-                        parsed = json.loads(raw_value)
-                    except (json.JSONDecodeError, TypeError):
-                        ids = [raw_value]
-                    else:
-                        if isinstance(parsed, list):
-                            ids = [str(v).strip() for v in parsed if str(v).strip()]
-                        elif parsed is not None:
-                            parsed_str = str(parsed).strip()
-                            if parsed_str:
-                                ids = [parsed_str]
-            elif isinstance(raw_value, list):
-                ids = [str(v).strip() for v in raw_value if str(v).strip()]
-
-            raw_map = props.get("BOT_MESSAGE_MAP", "")
-            if isinstance(raw_map, str):
-                raw_map = raw_map.strip()
-                if raw_map:
-                    try:
-                        parsed_map = json.loads(raw_map)
-                    except (json.JSONDecodeError, TypeError):
-                        parsed_map = {}
-                    if isinstance(parsed_map, dict):
-                        ids.extend([
-                            str(v).strip()
-                            for v in parsed_map.values()
-                            if str(v).strip()
-                        ])
-
+            ids = _json_list(props.get("BOT_MESSAGE_ID", "")) + _json_list(props.get("BOT_MESSAGE_MAP", ""))
             if str(message_id) in ids:
                 return item
         return None
 
-    def get_requests_by_initiator(self, initiator_id: str) -> list:
-        return entity_item_get(
+    def get_requests_by_initiator(self, initiator_id: str, offset: int = 0, limit: int = 0) -> tuple[list, bool]:
+        """Newest first. Returns (page, has_more); limit=0 means everything."""
+        items = entity_item_iter(
             self.http, ENTITY_REQUESTS,
             filter={"PROPERTY_INITIATOR_ID": str(initiator_id)},
             sort={"ID": "DESC"},
+            max_items=offset + limit + 1 if limit else 0,
         )
+        return self._page(items, offset, limit)
 
-    def get_requests_as_approver(self, user_id: str) -> list:
-        all_items = entity_item_get(self.http, ENTITY_REQUESTS, sort={"ID": "DESC"})
-        result = []
-        for item in all_items:
-            props = item.get("PROPERTY_VALUES", {})
-            try:
-                ids = [str(a) for a in json.loads(props.get("APPROVER_IDS", "[]"))]
-            except (json.JSONDecodeError, TypeError):
-                ids = []
-            if str(user_id) in ids:
-                result.append(item)
-        return result
+    def get_requests_as_approver(self, user_id: str, offset: int = 0, limit: int = 0) -> tuple[list, bool]:
+        """Newest first. Returns (page, has_more); limit=0 means everything within the scan cap."""
+        scanned = entity_item_iter(
+            self.http, ENTITY_REQUESTS, sort={"ID": "DESC"}, max_items=REQUEST_SCAN_LIMIT,
+        )
+        matching = (
+            item for item in scanned
+            if str(user_id) in _json_list(item.get("PROPERTY_VALUES", {}).get("APPROVER_IDS", "[]"))
+        )
+        return self._page(matching, offset, limit)
+
+    @staticmethod
+    def _page(items, offset: int, limit: int) -> tuple[list, bool]:
+        # Consumes the generator only as far as the page needs, so REST paging stops early.
+        if not limit:
+            return list(items)[offset:], False
+        page = list(islice(items, offset, offset + limit + 1))
+        return page[:limit], len(page) > limit
 
     # ── Entity Storage: Votes ───────────────────────────────────────────────
 
@@ -219,18 +220,27 @@ class ApprovalB24Client:
             "VOTED_AT": datetime.now(timezone.utc).isoformat(),
         }, name=item_name)
 
-    def update_vote(self, vote_id: str, decision: str, comment: str = "") -> None:
-        entity_item_update(self.http, ENTITY_VOTES, vote_id, {
-            "DECISION": decision,
-            "COMMENT": comment,
-            "VOTED_AT": datetime.now(timezone.utc).isoformat(),
-        })
-
     def get_votes(self, request_id: str) -> list:
         return entity_item_get(
             self.http, ENTITY_VOTES,
             filter={"PROPERTY_REQUEST_ID": str(request_id)},
         )
+
+    def get_votes_for_requests(self, request_ids: list[str]) -> dict[str, list]:
+        """Votes of many requests in one batch call instead of one call per request."""
+        if not request_ids:
+            return {}
+        results = self.http.batch({
+            str(rid): ("entity.item.get", {
+                "ENTITY": ENTITY_VOTES,
+                "FILTER": {"PROPERTY_REQUEST_ID": str(rid)},
+            })
+            for rid in request_ids
+        })
+        return {
+            str(rid): results[str(rid)] if isinstance(results.get(str(rid)), list) else []
+            for rid in request_ids
+        }
 
     def find_vote(self, request_id: str, user_id: str) -> dict | None:
         items = entity_item_get(self.http, ENTITY_VOTES, filter={

@@ -110,5 +110,15 @@
       },
       "action": "Durumu güncelle"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "Daha fazla göster"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "Bir talepte en fazla {max} onaylayan olabilir"
+      }
+    }
   }
 }

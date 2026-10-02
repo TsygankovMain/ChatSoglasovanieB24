@@ -1,8 +1,22 @@
 import json
 
 
+MAX_APPROVERS = 10
+MAX_COMMENT_LENGTH = 4000
+
+
 class ApprovalRulesError(Exception):
     pass
+
+
+def validate_approvers(initiator_id: str, approver_ids: list[str]) -> None:
+    if not approver_ids:
+        raise ApprovalRulesError("Добавьте хотя бы одного согласующего.")
+    if len(approver_ids) > MAX_APPROVERS:
+        raise ApprovalRulesError(f"В запросе может быть не больше {MAX_APPROVERS} согласующих.")
+    # The initiator cannot vote, so a request with them as an approver could never be approved unanimously.
+    if str(initiator_id) in {str(a) for a in approver_ids}:
+        raise ApprovalRulesError("Инициатор не может быть согласующим по своему запросу.")
 
 
 def _get_props(item: dict) -> dict:
@@ -51,18 +65,22 @@ def compute_new_status(request_item: dict, votes: list) -> str:
     approve_count = sum(1 for d in vote_by_user.values() if d == "approve")
     reject_count = sum(1 for d in vote_by_user.values() if d == "reject")
 
-    if reject_count > 0:
-        return "rejected"
-
     if total_approvers == 0:
         return "collecting"
 
-    if threshold_type == "all" and approve_count >= total_approvers:
-        return "approved"
+    if threshold_type == "majority":
+        needed = total_approvers // 2 + 1
+        if approve_count >= needed:
+            return "approved"
+        # Rejected only once the remaining voters can no longer reach the majority.
+        if total_approvers - reject_count < needed:
+            return "rejected"
+        return "collecting"
 
-    if threshold_type == "majority" and approve_count > total_approvers / 2:
+    if reject_count > 0:
+        return "rejected"
+    if approve_count >= total_approvers:
         return "approved"
-
     return "collecting"
 
 

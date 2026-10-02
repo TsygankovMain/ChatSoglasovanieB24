@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ApprovalRequest } from '~/stores/api'
 
-const props = defineProps<{
+defineProps<{
   status: ApprovalRequest['status']
 }>()
 

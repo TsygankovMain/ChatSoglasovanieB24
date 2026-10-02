@@ -5,7 +5,7 @@
     "ru": "Согласование в чате",
     "en": "Chat Approval"
   },
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "rest",
   "scope": [
     "im",
@@ -83,7 +83,7 @@
     },
     {
       "code": "ONIMCOMMANDADD",
-      "handler": "https://__APP_DOMAIN__/api/approval/vote",
+      "handler": "https://__APP_DOMAIN__/api/vote/handle",
       "comment": "Обработка нажатия кнопок голосования из сообщения бота."
     }
   ],
@@ -104,11 +104,11 @@
     "commands": [
       {
         "code": "approve",
-        "handler": "https://__APP_DOMAIN__/api/approval/vote"
+        "handler": "https://__APP_DOMAIN__/api/vote/handle"
       },
       {
         "code": "reject",
-        "handler": "https://__APP_DOMAIN__/api/approval/vote"
+        "handler": "https://__APP_DOMAIN__/api/vote/handle"
       }
     ]
   },

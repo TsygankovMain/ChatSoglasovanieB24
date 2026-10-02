@@ -110,5 +110,15 @@
       },
       "action": "Odśwież status"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "Pokaż więcej"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "Nie więcej niż {max} zatwierdzających w jednym wniosku"
+      }
+    }
   }
 }

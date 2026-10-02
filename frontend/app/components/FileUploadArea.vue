@@ -2,7 +2,7 @@
 import Attach2Icon from '@bitrix24/b24icons-vue/main/Attach2Icon'
 import Cross20Icon from '@bitrix24/b24icons-vue/actions/Cross20Icon'
 
-const props = defineProps<{
+defineProps<{
   files: File[]
 }>()
 
@@ -40,7 +40,7 @@ function handleDrop(event: DragEvent) {
     >
       <Attach2Icon class="mx-auto h-6 w-6 text-b24-base-300 mb-1" />
       <p class="text-sm text-b24-base-400">{{ t('approval.form.files_hint') }}</p>
-      <input ref="inputRef" type="file" multiple class="hidden" @change="onInputChange" />
+      <input ref="inputRef" type="file" multiple class="hidden" @change="onInputChange">
     </div>
 
     <div v-if="files.length > 0" class="space-y-1">

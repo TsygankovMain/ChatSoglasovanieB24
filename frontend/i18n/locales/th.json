@@ -110,5 +110,15 @@
       },
       "action": "อัปเดตสถานะ"
     }
+  },
+  "approval": {
+    "action": {
+      "load_more": "แสดงเพิ่มเติม"
+    },
+    "form": {
+      "error": {
+        "too_many_approvers": "ผู้อนุมัติไม่เกิน {max} คนต่อคำขอ"
+      }
+    }
   }
 }
