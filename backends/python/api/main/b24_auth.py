@@ -7,6 +7,8 @@ Replaces both Bitrix24Account and ApplicationInstallation models.
 
 from __future__ import annotations
 
+import ipaddress
+import re
 from datetime import timedelta
 
 import jwt
@@ -20,6 +22,28 @@ from b24pysdk.utils.functional import Classproperty
 from django.utils import timezone
 
 from config import config
+
+
+_HOSTNAME_RE = re.compile(r"^(?=.{1,253}$)[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:\d{1,5})?$")
+
+
+def normalize_portal_domain(raw: object) -> str:
+    """Return a bare portal host or raise: the value comes from the client and
+    becomes the target of server-side REST calls."""
+    domain = str(raw or "").strip().lower()
+    domain = domain.removeprefix("https://").removeprefix("http://").rstrip("/")
+    if not _HOSTNAME_RE.match(domain):
+        raise BitrixValidationError("Invalid portal domain")
+    host = domain.rsplit(":", 1)[0] if ":" in domain else domain
+    try:
+        ipaddress.ip_address(host)
+    except ValueError:
+        return domain
+    raise BitrixValidationError("Invalid portal domain")
+
+
+class IdentityError(Exception):
+    """Bitrix24 did not confirm the owner of the supplied access token."""
 
 
 class B24AuthContext(AbstractBitrixToken):
@@ -100,6 +124,36 @@ class B24AuthContext(AbstractBitrixToken):
         except Exception:
             self.expires = int(event.renewed_oauth_token.oauth_token.expires or 0)
         self.expires_in = int(event.renewed_oauth_token.oauth_token.expires_in or 0)
+
+    # ===== Identity =====
+
+    def verify_identity(self, expected_user_id: object = None) -> None:
+        """Ask the portal who owns the access token and trust only that answer.
+
+        `user_id` in iframe and webhook payloads is supplied by the caller, so
+        without this check any portal user could act as somebody else.
+        """
+        from core.b24_entity import B24HttpClient
+
+        try:
+            profile = B24HttpClient(self).call("profile")
+        except RuntimeError as exc:
+            raise IdentityError(str(exc)) from exc
+
+        owner_id = 0
+        if isinstance(profile, dict):
+            try:
+                owner_id = int(profile.get("ID") or 0)
+            except (TypeError, ValueError):
+                owner_id = 0
+        if not owner_id:
+            raise IdentityError("Bitrix24 did not return the token owner")
+
+        if expected_user_id not in (None, "") and str(expected_user_id) != str(owner_id):
+            raise IdentityError("Access token belongs to another user")
+
+        self.b24_user_id = owner_id
+        self.is_b24_user_admin = profile.get("ADMIN") in (True, "Y", "true", 1, "1")
 
     # ===== Compatibility shim (drop-in replacement for Bitrix24Account.b24_user_id, .status, etc) =====
 
@@ -208,7 +262,7 @@ class B24AuthContext(AbstractBitrixToken):
         if not member_id:
             raise BitrixValidationError("OAuth payload missing member_id")
 
-        domain = domain.removeprefix("https://").removeprefix("http://").rstrip("/")
+        domain = normalize_portal_domain(domain)
         expires_in = to_int(first_value("AUTH_EXPIRES", "expires_in", default=3600), 3600)
         expires = to_int(first_value("expires", default=0), 0)
         if not expires:
@@ -282,7 +336,7 @@ class B24AuthContext(AbstractBitrixToken):
         return cls(
             b24_user_id=auth.get("user_id", 0) or 0,
             member_id=auth.get("member_id", ""),
-            domain_url=auth.get("domain", ""),
+            domain_url=normalize_portal_domain(auth.get("domain", "")),
             access_token=auth.get("access_token", ""),
             refresh_token=auth.get("refresh_token", ""),
             expires=auth.get("expires", 0) or 0,

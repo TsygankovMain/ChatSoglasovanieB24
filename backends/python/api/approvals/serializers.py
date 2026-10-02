@@ -5,11 +5,18 @@ from http import HTTPStatus
 
 from django.http import JsonResponse
 
+from .rules import MAX_APPROVERS, MAX_COMMENT_LENGTH
+
 
 def validate_create_form(data: dict) -> tuple[dict | None, JsonResponse | None]:
     comment = (data.get("comment") or "").strip()
     if not comment:
         return None, JsonResponse({"error": "comment is required"}, status=HTTPStatus.BAD_REQUEST)
+    if len(comment) > MAX_COMMENT_LENGTH:
+        return None, JsonResponse(
+            {"error": f"comment is too long: max {MAX_COMMENT_LENGTH} characters"},
+            status=HTTPStatus.BAD_REQUEST,
+        )
 
     raw_approvers = data.get("approver_ids", "")
     if isinstance(raw_approvers, list):
@@ -22,8 +29,18 @@ def validate_create_form(data: dict) -> tuple[dict | None, JsonResponse | None]:
     else:
         return None, JsonResponse({"error": "approver_ids is required"}, status=HTTPStatus.BAD_REQUEST)
 
+    if not isinstance(approver_ids, list):
+        return None, JsonResponse({"error": "approver_ids must be a JSON array"}, status=HTTPStatus.BAD_REQUEST)
+    approver_ids = list(dict.fromkeys(str(a).strip() for a in approver_ids if str(a).strip()))
     if not approver_ids:
         return None, JsonResponse({"error": "at least one approver is required"}, status=HTTPStatus.BAD_REQUEST)
+    if not all(a.isdigit() for a in approver_ids):
+        return None, JsonResponse({"error": "approver_ids must contain user ids"}, status=HTTPStatus.BAD_REQUEST)
+    if len(approver_ids) > MAX_APPROVERS:
+        return None, JsonResponse(
+            {"error": f"Too many approvers: max {MAX_APPROVERS} per request"},
+            status=HTTPStatus.BAD_REQUEST,
+        )
 
     threshold_type = (data.get("threshold_type") or "").strip()
     if threshold_type not in ("all", "majority"):
@@ -38,10 +55,29 @@ def validate_create_form(data: dict) -> tuple[dict | None, JsonResponse | None]:
 
     return {
         "comment": comment,
-        "approver_ids": [str(a) for a in approver_ids],
+        "approver_ids": approver_ids,
         "threshold_type": threshold_type,
         "dialog_id": dialog_id,
     }, None
+
+
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 50
+
+
+def parse_page_params(data: dict) -> tuple[int, int]:
+    """(offset, limit) from the query string; anything malformed falls back to the first page."""
+    def to_int(value, fallback: int) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return fallback
+
+    offset = max(to_int(data.get("offset"), 0), 0)
+    limit = to_int(data.get("limit"), DEFAULT_PAGE_SIZE)
+    if limit <= 0:
+        limit = DEFAULT_PAGE_SIZE
+    return offset, min(limit, MAX_PAGE_SIZE)
 
 
 def validate_cancel_form(data: dict) -> tuple[str | None, JsonResponse | None]:

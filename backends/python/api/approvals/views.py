@@ -8,14 +8,14 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-from b24pysdk.error import BitrixAPIError, BitrixValidationError
+from b24pysdk.error import BitrixValidationError
 
-from main.b24_auth import B24AuthContext
+from main.b24_auth import B24AuthContext, IdentityError
 from main.utils import AuthorizedRequest
 from main.utils.decorators import auth_required, log_errors
 from main.utils.decorators.collect_request_data import collect_request_data
 
-from .serializers import validate_cancel_form, validate_create_form, validate_uploaded_files
+from .serializers import parse_page_params, validate_cancel_form, validate_create_form, validate_uploaded_files
 from .services import ApprovalService
 from . import rules
 
@@ -198,7 +198,7 @@ def approval_create(request: AuthorizedRequest):
             len(result.get("bot_message_ids", []) or []),
             result.get("bot_issue", ""),
         )
-    except RuntimeError as exc:
+    except (RuntimeError, rules.ApprovalRulesError) as exc:
         logger.warning("[create][%s] failed: %s", trace_id, str(exc))
         return JsonResponse({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
     return JsonResponse(result, status=HTTPStatus.CREATED)
@@ -213,9 +213,12 @@ def approval_list(request: AuthorizedRequest):
     if role not in ("initiator", "approver"):
         return JsonResponse({"error": "role must be 'initiator' or 'approver'"}, status=HTTPStatus.BAD_REQUEST)
 
+    offset, limit = parse_page_params(request.data)
     service = ApprovalService(request.bitrix24_account)
-    items = service.list_requests(str(request.bitrix24_account.b24_user_id), role)
-    return JsonResponse({"items": items})
+    items, has_more = service.list_requests(
+        str(request.bitrix24_account.b24_user_id), role, offset=offset, limit=limit,
+    )
+    return JsonResponse({"items": items, "has_more": has_more, "offset": offset, "limit": limit})
 
 
 @xframe_options_exempt
@@ -304,12 +307,18 @@ def vote_handle(request):
         logger.warning("[vote][%s] missing auth in webhook payload: %s", trace_id, exc)
         return JsonResponse({"error": "Webhook auth payload missing"}, status=HTTPStatus.BAD_REQUEST)
 
-    # SEC-P2-1: implicit signature check — ApprovalService.__init__ performs an
-    # authenticated B24 API call. A forged webhook payload with a fake
-    # access_token will fail here and we return 401 instead of processing.
+    # SEC-P2-1: the webhook body is not signed, so the voter id in it is only a
+    # claim. Bitrix24 sends the event with the token of the user who pressed
+    # the button — the vote counts only if the portal confirms that owner.
+    try:
+        account.verify_identity(expected_user_id=user_id)
+    except IdentityError as exc:
+        logger.warning("[vote][%s] voter identity not confirmed: %s", trace_id, exc)
+        return JsonResponse({"error": "Webhook auth rejected by Bitrix24"}, status=HTTPStatus.UNAUTHORIZED)
+
     try:
         service = ApprovalService(account)
-    except BitrixAPIError as exc:
+    except RuntimeError as exc:
         logger.warning("[vote][%s] webhook auth rejected by Bitrix24: %s", trace_id, exc)
         return JsonResponse({"error": "Webhook auth rejected by Bitrix24"}, status=HTTPStatus.UNAUTHORIZED)
     try:

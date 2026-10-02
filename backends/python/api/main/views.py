@@ -1,3 +1,5 @@
+import logging
+
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -7,20 +9,18 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 from .utils.decorators import auth_required, log_errors
 from .utils import AuthorizedRequest
 
-from config import load_config, config
+from config import config
 from approvals.b24_client import ApprovalB24Client
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "root",
     "health",
-    "get_enum",
-    "get_list",
     "install",
     "get_token",
     "on_app_uninstall",
 ]
-
-config = load_config()
 
 
 @xframe_options_exempt
@@ -44,33 +44,12 @@ def health(request: AuthorizedRequest):
 
 
 @xframe_options_exempt
-@require_GET
-@log_errors("get_enum")
-@auth_required
-def get_enum(request: AuthorizedRequest):
-    options = ["option 1", "option 2", "option 3"]
-    return JsonResponse(options, safe=False)
-
-
-@xframe_options_exempt
-@require_GET
-@log_errors("get_list")
-@auth_required
-def get_list(request: AuthorizedRequest):
-    elements = ["element 1", "element 2", "element 3"]
-    return JsonResponse(elements, safe=False)
-
-
-@xframe_options_exempt
 @csrf_exempt
 @require_POST
 @log_errors("install")
 @auth_required
 def install(request: AuthorizedRequest):
     bitrix24_account = request.bitrix24_account
-
-    import logging
-    logger = logging.getLogger(__name__)
 
     b24 = ApprovalB24Client(bitrix24_account)
     steps = {}
@@ -173,6 +152,5 @@ def on_app_uninstall(request):
     inside the portal itself and is removed there. We return 200 OK so the
     event is considered delivered.
     """
-    import logging
-    logging.getLogger(__name__).info("ONAPPUNINSTALL received")
+    logger.info("ONAPPUNINSTALL received")
     return JsonResponse({"ok": True})

@@ -15,7 +15,10 @@ def log_errors(message: str):
                 response = func(*args, **kwargs)
             except Exception as exc:
                 logger.exception("%s failed: %s", message, str(exc))
-                return JsonResponse({"error": str(exc)}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+                # RuntimeError carries a Bitrix24 REST message the user can act on;
+                # anything else is an internal fault whose text stays in the log.
+                text = str(exc) if isinstance(exc, RuntimeError) else "Internal server error"
+                return JsonResponse({"error": text}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
             else:
                 return response
         return wrapper

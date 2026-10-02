@@ -4,6 +4,7 @@ Lets us import view modules and B24AuthContext without spinning up
 a real database — the dummy ENGINE in settings.py covers everything.
 """
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -22,3 +23,6 @@ from django.apps import apps as _apps  # noqa: E402
 
 if not _apps.ready:
     django.setup()
+
+# Service code logs every REST step; in tests that only buries the result line.
+logging.disable(logging.CRITICAL)
