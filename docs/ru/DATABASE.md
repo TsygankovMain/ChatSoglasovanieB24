@@ -1,204 +1,82 @@
-# Схема базы данных
+# Хранение данных
 
-Документация по структуре данных и схеме базы данных.
+*Состояние на 02.10.2026.*
 
-## Хранилище сущностей Bitrix24
+Своей базы данных у приложения нет. Запросы, голоса и журнал лежат в хранилище приложения на портале клиента (`entity.*`), файлы — на Диске портала. На нашем сервере не сохраняется ничего: ни данные согласований, ни токены порталов.
 
-### appr_requests
+Следствия:
 
-Хранит данные запросов согласования.
+- данные клиента не покидают его Битрикс24;
+- при удалении приложения данными распоряжается портал: наш сервер получает только уведомление и чистить ему нечего;
+- резервная копия — это резервная копия портала, отдельного бэкапа у приложения нет.
 
-| Поле | Тип | Описание |
-|------|-----|---------|
-| INITIATOR_ID | String | ID пользователя создателя |
-| COMMENT | String | Описание запроса |
-| APPROVER_IDS | String | JSON массив ID согласующих |
-| THRESHOLD_TYPE | String | ALL / MAJORITY |
-| STATUS | String | collecting / approved / rejected / expired / cancelled |
-| DIALOG_ID | String | ID чата |
-| BOT_MESSAGE_ID | String | ID сообщения бота |
-| DISK_FOLDER_ID | String | ID папки на диске |
-| FILE_IDS | String | JSON массив ID файлов |
-| CREATED_AT | String | ISO timestamp |
+## Хранилища
 
-**Пример**:
-```json
-{
-  "ID": "req-1704067200-1",
-  "PROPERTY_VALUES": {
-    "INITIATOR_ID": "1",
-    "COMMENT": "Проверка Q2 бюджета",
-    "APPROVER_IDS": "[2, 3, 4]",
-    "STATUS": "collecting",
-    "DIALOG_ID": "chat123"
-  }
-}
-```
+Создаются при установке (`ApprovalB24Client.create_entity_storages`). Все свойства строковые.
 
-### approval_votes
+### `appr_requests` — запросы
 
-Хранит решения голосующих.
+| Свойство | Содержимое |
+|---|---|
+| `INITIATOR_ID` | Кто создал |
+| `COMMENT` | Текст запроса |
+| `APPROVER_IDS` | JSON-массив идентификаторов согласующих |
+| `THRESHOLD_TYPE` | `all` или `majority` |
+| `STATUS` | `collecting`, `approved`, `rejected`, `cancelled` |
+| `DIALOG_ID` | Чат, из которого создан запрос |
+| `BOT_MESSAGE_ID` | JSON-массив идентификаторов сообщений бота |
+| `BOT_MESSAGE_MAP` | JSON-объект «согласующий → его сообщение бота» |
+| `DISK_FOLDER_ID` | Папка с файлами запроса на Диске |
+| `FILE_IDS`, `FILE_NAMES` | JSON-массивы идентификаторов и имён файлов |
+| `CREATED_AT` | Время создания, ISO 8601, UTC |
 
-| Поле | Тип | Описание |
-|------|-----|---------|
-| REQUEST_ID | String | ID запроса |
-| USER_ID | String | ID голосующего |
-| DECISION | String | APPROVE / REJECT |
-| COMMENT | String | Комментарий голосующего |
-| VOTED_AT | String | ISO timestamp |
+### `approval_votes` — голоса
 
-**Пример**:
-```json
-{
-  "ID": "vote-req-1704067200-1-2",
-  "PROPERTY_VALUES": {
-    "REQUEST_ID": "req-1704067200-1",
-    "USER_ID": "2",
-    "DECISION": "APPROVE",
-    "VOTED_AT": "2026-04-24T10:05:00Z"
-  }
-}
-```
+| Свойство | Содержимое |
+|---|---|
+| `REQUEST_ID` | Запрос |
+| `USER_ID` | Кто проголосовал |
+| `DECISION` | `approve` или `reject` |
+| `COMMENT` | Комментарий к голосу; сейчас всегда пустой — кнопка его не собирает |
+| `VOTED_AT` | Время, ISO 8601, UTC |
 
-## PostgreSQL (Опционально)
+### `appr_events` — журнал
 
-### requests таблица
+| Свойство | Содержимое |
+|---|---|
+| `REQUEST_ID` | Запрос |
+| `TYPE` | `created`, `notify_approver`, `notify_approver_failed`, `vote`, `status_changed`, `notify_initiator`, `notify_initiator_failed`, `cancelled` |
+| `USER_ID`, `DECISION` | Кто и что решил, если применимо |
+| `STATUS_BEFORE`, `STATUS_AFTER` | Смена статуса |
+| `MESSAGE` | Текст для показа |
+| `META` | JSON с подробностями |
+| `CREATED_AT` | Время, ISO 8601, UTC |
 
-```sql
-CREATE TABLE requests (
-  id VARCHAR(100) PRIMARY KEY,
-  initiator_id INTEGER,
-  comment TEXT,
-  approver_ids TEXT,  -- JSON
-  status VARCHAR(20),
-  created_at TIMESTAMP,
-  
-  INDEX idx_status(status),
-  INDEX idx_initiator(initiator_id)
-);
-```
+## Настройки приложения (`app.option`)
 
-### votes таблица
+| Ключ | Содержимое |
+|---|---|
+| `BOT_ID` | Идентификатор бота на портале |
+| `APPROVE_COMMAND_ID`, `REJECT_COMMAND_ID` | Команды кнопок |
+| `approval_entities_v1` | Признак, что хранилища созданы |
+| `portalUsers`, `portalUsersTime` | Кэш списка сотрудников для формы, живёт 5 минут |
 
-```sql
-CREATE TABLE votes (
-  id VARCHAR(100) PRIMARY KEY,
-  request_id VARCHAR(100),
-  user_id INTEGER,
-  decision VARCHAR(20),
-  voted_at TIMESTAMP,
-  
-  UNIQUE KEY unique_vote(request_id, user_id),
-  INDEX idx_request(request_id)
-);
-```
+## Файлы
 
-### users таблица (кэш)
+На общем диске компании создаётся папка «Согласования», в ней — подпапка на каждый запрос с файлами (`<время>-<инициатор>`). Права на файлы — обычные права Диска портала.
 
-```sql
-CREATE TABLE users (
-  id INTEGER PRIMARY KEY,
-  domain VARCHAR(100),
-  name VARCHAR(255),
-  last_name VARCHAR(255),
-  fetched_at TIMESTAMP
-);
-```
+## Ограничения хранилища
 
-### sessions таблица
+- Списочные методы отдают по 50 записей. Бэкенд читает постранично (`core/b24_entity.entity_item_iter`) и останавливается, как только набрал нужную страницу.
+- Поиска по вхождению в JSON-свойство нет. Поэтому «Входящие» и поиск запроса по сообщению бота просматривают последние запросы портала, не больше 1000 (`REQUEST_SCAN_LIMIT`).
+- Голоса для страницы списка читаются одним пакетным запросом (`batch`), а не по запросу на каждую запись.
+- Транзакций нет. От двойного голоса защищает проверка после записи: если у пользователя оказалось два голоса, учитывается первый.
 
-```sql
-CREATE TABLE sessions (
-  id VARCHAR(100) PRIMARY KEY,
-  domain VARCHAR(100),
-  user_id INTEGER,
-  access_token VARCHAR(1000),
-  refresh_token VARCHAR(1000),
-  token_expires_at TIMESTAMP,
-  created_at TIMESTAMP
-);
-```
+## Проверки данных
 
-## Отношения между сущностями
-
-```
-appr_requests (1) ──────── approval_votes (Many)
-      ↑
-      └─ votes.REQUEST_ID → requests.ID
-```
-
-## Жизненный цикл данных
-
-### Создание запроса
-1. Фронтенд отправляет данные
-2. Бэкенд создаёт item в appr_requests
-3. Загружает файл (если есть)
-4. Публикует сообщение бота
-5. Сохраняет MESSAGE_ID
-
-### Голосование
-1. Согласующий нажимает кнопку
-2. Создаётся/обновляется vote в approval_votes
-3. Пересчитываются агрегаты
-4. Обновляется STATUS в appr_requests
-5. Обновляется сообщение бота
-
-## Оптимизация и индексы
-
-### Критические индексы
-
-```sql
--- Быстрый поиск по статусу
-CREATE INDEX idx_requests_status ON requests(status);
-
--- Быстрый поиск голосов запроса
-CREATE INDEX idx_votes_request ON approval_votes(request_id);
-
--- Быстрый поиск по инициатору
-CREATE INDEX idx_requests_initiator ON requests(initiator_id);
-```
-
-### Рекомендации производительности
-
-- Используйте indexed фильтры (status, initiator_id)
-- Избегайте полных сканов таблиц
-- Для JSON поиска используйте денормализацию
-- Кэшируйте часто используемые данные
-
-## Резервное копирование
-
-### Backup команда
-
-```bash
-# PostgreSQL
-pg_dump -U user database_name > backup.sql
-
-# С сжатием
-pg_dump -U user database_name | gzip > backup.sql.gz
-```
-
-### Восстановление
-
-```bash
-# Restore
-psql -U user database_name < backup.sql
-
-# Из сжатого файла
-gunzip < backup.sql.gz | psql -U user database_name
-```
-
-## Валидация данных
-
-### Ограничения
-
-```
-INITIATOR_ID:  Required, valid user ID
-COMMENT:       Required, 1-1000 chars
-APPROVER_IDS:  Required, min 1 user
-STATUS:        One of: collecting, approved, rejected, expired, cancelled
-DECISION:      One of: APPROVE, REJECT
-```
-
----
-
-**Последнее обновление**: Апрель 2026
+| Что | Правило |
+|---|---|
+| Комментарий | обязателен, до 4000 символов |
+| Согласующие | от 1 до 10, без инициатора |
+| Правило | `all` или `majority` |
+| Файлы | до 10 штук, каждый до 25 МиБ, только разрешённые расширения |

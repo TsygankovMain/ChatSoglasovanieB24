@@ -1,234 +1,93 @@
-# Руководство по развертыванию
+# Развёртывание
 
-Полное руководство по развертыванию приложения на продакшене.
+*Состояние на 02.10.2026.*
 
-## Предварительная проверка
+Приложение собирается в один образ из корневого `Dockerfile`. Внутри три процесса за одним nginx на порту 8080: Nuxt (интерфейс), Django под gunicorn (API) и сам nginx. Скрипт запуска — `deploy/timeweb/entrypoint.sh`. База данных не нужна.
 
-- [ ] Все тесты проходят
-- [ ] Аудит безопасности пройден
-- [ ] Переменные окружения настроены
-- [ ] Миграции БД протестированы
-- [ ] SSL сертификаты получены
-- [ ] Приложение зарегистрировано в Bitrix24
-- [ ] API протестирован с реальным порталом
-- [ ] Мониторинг и логирование настроены
+## Где работает
 
-## Требования сервера
+| Площадка | Адрес | Что развёрнуто | Как обновляется |
+|---|---|---|---|
+| Timeweb App Platform | `tsygankovmain-chatsoglasovanieb24-c9c9.twc1.net` | ветка `prod`, на этот адрес смотрят установленные порталы | из ветки `prod`; пуш в неё считать выкаткой |
+| Сервер Мейнсофт `main.mainsoft.su` | `soglasovanie.apps.mainsoft.su` | копия ветки `prod` (`ceec187`) в закрытой сети, без выхода в интернет | вручную, см. ниже |
 
-**Минимум**:
-- 2 CPU ядра
-- 4 GB RAM
-- 20 GB диск
-- Ubuntu 20.04 LTS
-
-**Рекомендуется**:
-- 4+ CPU ядер
-- 8+ GB RAM
-- 50+ GB диск
-- Auto-scaling
-
-## Установка зависимостей
-
-```bash
-# Обновление системы
-sudo apt-get update && sudo apt-get upgrade -y
-
-# Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-```
+Ветка `claude/tech-debt` на 02.10.2026 не выкачена ни на одну площадку.
 
 ## Переменные окружения
 
-**.env для продакшена**:
-```bash
-VIRTUAL_HOST=https://approval.yourdomain.com
-NUXT_PUBLIC_APP_URL=https://approval.yourdomain.com
-NUXT_PUBLIC_API_URL=https://approval.yourdomain.com/api
-SERVER_HOST=http://api-python:8000
+| Переменная | Обязательна | Значение |
+|---|---|---|
+| `JWT_SECRET` | да | Случайная строка не короче 32 символов: `openssl rand -hex 32`. С более коротким значением бэкенд в боевом режиме не стартует |
+| `VIRTUAL_HOST` | да | Публичный адрес приложения с `https://`. По нему регистрируются бот, кнопки и встройки на портале |
+| `APP_URL` | нет | То же, что `VIRTUAL_HOST`; подставляется, если тот не задан |
+| `ALLOWED_HOSTS` | нет | Дополнительные имена хоста через запятую |
+| `BUILD_TARGET` | нет | `production` задан в образе; `dev` включает отладку Django |
+| `CLIENT_ID`, `CLIENT_SECRET` | нет | Нужны только для продления OAuth-токена на стороне сервера. Приложение из Маркета работает без них: свежий токен каждый раз приносит портал |
+| `GUNICORN_WORKERS`, `GUNICORN_TIMEOUT` | нет | По умолчанию 2 и 120 |
 
-CLIENT_ID=your_app_client_id
-CLIENT_SECRET=your_app_client_secret
-SCOPE=im,imbot,entity,disk,placement,user
+`JWT_SECRET` при переезде на другой адрес сохранять не нужно: JWT живёт час и привязан к адресу, с которого открыт интерфейс.
 
-DB_NAME=approval_db
-DB_USER=approval_user
-DB_PASSWORD=very_secure_password
-DB_HOST=database
+## Выкатка на `main.mainsoft.su`
 
-NODE_ENV=production
-BUILD_TARGET=prod
-```
+Папка приложения — `/srv/prod/soglasovanie`: исходники в `src`, настройки в `compose.yml` и `soglasovanie.env`, ревизия в `REVISION`. Вход — Caddy (`/srv/prod/proxy/sites/apps.caddy`), сертификат выпускается сам.
 
-## Docker Compose развертывание
+Шаги для новой ревизии:
 
 ```bash
-# Клонируем репозиторий
-sudo mkdir -p /var/www/approval-app
-cd /var/www/approval-app
-git clone <repo-url> .
+# 1. На машине с репозиторием: архив нужной ветки
+git archive --format=tar <ветка> > soglasovanie-src.tar
+scp soglasovanie-src.tar prod-main:/tmp/
 
-# Копируем .env
-cp .env.example .env
-# Редактируем .env
+# 2. На сервере: сохранить текущий образ для отката и заменить исходники
+ssh prod-main
+cd /srv/prod/soglasovanie
+docker tag mainsoft/soglasovanie:latest mainsoft/soglasovanie:prev
+mkdir src.new && tar -xf /tmp/soglasovanie-src.tar -C src.new
+mv src src.prev && mv src.new src
+echo "<ветка> <короткий хеш>" > REVISION
 
-# Запуск сервисов
-docker-compose -f docker-compose.prod.yml up -d --build
-
-# Проверка статуса
-docker-compose -f docker-compose.prod.yml ps
-
-# Логи
-docker-compose -f docker-compose.prod.yml logs -f
+# 3. Собрать и перезапустить
+docker build -t mainsoft/soglasovanie:latest src
+docker compose up -d
+docker compose ps        # ждать healthy
 ```
 
-## SSL/HTTPS (Let's Encrypt)
+Первый перевод из зеркала в рабочий режим — один раз: в `compose.yml` заменить сеть `mirror` на `edge`. В закрытой сети приложение не может обратиться к порталу и работать с ним не будет.
+
+Проверка снаружи:
 
 ```bash
-# Установка Certbot
-sudo apt-get install -y certbot python3-certbot-nginx
-
-# Получение сертификата
-sudo certbot certonly --standalone \
-  -d approval.yourdomain.com \
-  --agree-tos \
-  --email your-email@domain.com
-
-# Сертификаты в: /etc/letsencrypt/live/approval.yourdomain.com/
+curl -fsS https://soglasovanie.apps.mainsoft.su/nginx-health        # ok
+# Заведомо неверный токен: бэкенд должен дойти до портала и получить отказ — 401
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://soglasovanie.apps.mainsoft.su/api/getToken \
+  -H 'Content-Type: application/json' \
+  -d '{"DOMAIN":"mainsoft.bitrix24.ru","AUTH_ID":"x","member_id":"x"}'
 ```
 
-## Nginx конфигурация
+Откат: `docker tag mainsoft/soglasovanie:prev mainsoft/soglasovanie:latest && docker compose up -d`, исходники вернуть из `src.prev`.
 
-```nginx
-# Редирект HTTP на HTTPS
-server {
-    listen 80;
-    server_name approval.yourdomain.com;
-    return 301 https://$server_name$request_uri;
-}
+## Перевод порталов на новый адрес
 
-# HTTPS
-server {
-    listen 443 ssl http2;
-    server_name approval.yourdomain.com;
+Адреса обработчиков записаны на каждом портале: бот, две команды кнопок, три встройки в чат, событие удаления. Приложение не хранит токены порталов и само их переписать не может. Адрес меняется, когда на портале проходит установка или обновление приложения: мастер установки заново регистрирует всё на адрес из `VIRTUAL_HOST`.
 
-    ssl_certificate /etc/letsencrypt/live/approval.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/approval.yourdomain.com/privkey.pem;
-    
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
+Поэтому порядок такой:
 
-    # Фронтенд
-    location / {
-        proxy_pass http://frontend:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
+1. Выкатить и проверить приложение на новом адресе. Timeweb при этом продолжает работать.
+2. В кабинете разработчика выпустить новую версию приложения с адресами `https://soglasovanie.apps.mainsoft.su/…` (те же пути, что в `app.json`).
+3. Порталы переходят на новый адрес по мере обновления приложения. Пока портал не обновился, он работает через Timeweb.
+4. Timeweb выключать, когда обновились все установки.
 
-    # API
-    location /api/ {
-        proxy_pass http://api-python:8000;
-        proxy_read_timeout 30s;
-    }
-}
-```
+Обе площадки могут работать одновременно: общих данных между ними нет.
 
-## Мониторинг здоровья
+До слияния этой ветки в `prod` проверить `JWT_SECRET` в панели Timeweb: если там строка короче 32 символов, новая версия на Timeweb не запустится.
 
-Services имеют встроенные healthchecks:
+## Локальная разработка
 
 ```bash
-# Проверка статуса
-docker-compose -f docker-compose.prod.yml ps
-
-# Должны показывать "healthy"
+cp .env.example .env      # VIRTUAL_HOST, CLOUDPUB_TOKEN, JWT_SECRET
+make dev-python           # интерфейс + API + туннель cloudpub
+make test                 # тесты бэкенда
+make lint                 # линтер фронтенда
 ```
 
-## Резервное копирование БД
-
-```bash
-#!/bin/bash
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/approval-db"
-mkdir -p $BACKUP_DIR
-
-docker-compose -f /var/www/approval-app/docker-compose.prod.yml exec -T database \
-  pg_dump -U approval_user approval_db | gzip > $BACKUP_DIR/db-$TIMESTAMP.sql.gz
-
-# Сохранение на 7 дней
-find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete
-```
-
-## Масштабирование
-
-### Docker Swarm
-
-```bash
-docker swarm init
-docker service create --replicas 3 api-python
-```
-
-### Database Connection Pooling
-
-```python
-SQLALCHEMY_ENGINE_OPTIONS = {
-    "pool_size": 20,
-    "max_overflow": 40,
-    "pool_pre_ping": True,
-}
-```
-
-## Откат на предыдущую версию
-
-```bash
-# Тегируем текущую версию
-git tag backup-production-$(date +%Y%m%d)
-
-# Переходим на предыдущую
-git checkout tags/v1.0.0
-
-# Перестраиваем
-docker-compose -f docker-compose.prod.yml up -d --build
-
-# Проверяем логи
-docker-compose -f docker-compose.prod.yml logs -f
-```
-
-## Решение проблем
-
-### Сервисы не запускаются
-
-```bash
-docker-compose -f docker-compose.prod.yml logs
-docker-compose -f docker-compose.prod.yml up -d --build
-```
-
-### Ошибки БД
-
-```bash
-# Проверка здоровья
-docker-compose -f docker-compose.prod.yml exec database pg_isready
-
-# Подключение вручную
-docker-compose -f docker-compose.prod.yml exec database \
-  psql -U approval_user -d approval_db
-```
-
-### Проблемы с SSL
-
-```bash
-# Проверка срока действия
-sudo openssl x509 -in /etc/letsencrypt/live/approval.yourdomain.com/cert.pem -noout -dates
-
-# Обновление
-sudo certbot renew --force-renewal
-```
-
----
-
-**Последнее обновление**: Апрель 2026
+Dev-окружение описано в `docker-compose.dev.yml`. `docker-compose.yml` — вариант из трёх контейнеров для своего сервера; боевые площадки используют корневой `Dockerfile`.

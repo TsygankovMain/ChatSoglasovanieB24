@@ -1,87 +1,74 @@
-# Приложение для согласований в чате Bitrix24
+# Согласование в чате — приложение для Битрикс24
 
-Приложение для Bitrix24, реализующее процесс согласования прямо в чате портала. Инициатор создаёт запрос через размещение `IM_TEXTAREA`, бот публикует сообщение с интерактивными кнопками голосования, согласующие принимают решение, итоговый статус автоматически обновляется в карточке.
+Согласование прямо из чата портала. Инициатор открывает форму из поля ввода или из меню сообщения, выбирает согласующих и правило. Бот присылает каждому согласующему личное сообщение с кнопками «Одобрить» и «Отклонить», считает голоса и обновляет статус.
+
+Приложение опубликовано в Маркете Битрикс24.
 
 ## Возможности
 
-- Создание запроса согласования из любого чата (через размещение `IM_TEXTAREA`)
-- Бот публикует сообщение с кнопками «Согласовать» / «Отклонить» / «Запросить уточнение»
-- Несколько согласующих, опциональное правило «достаточно одного «за»» или «требуется единогласие»
-- Прикрепление файлов из Bitrix24.Disk
-- Журнал событий по каждому запросу
-- Автообновление статуса сообщения бота при поступлении голосов
-- Карточка с подробной информацией о запросе и истории голосования
+- Создание запроса из поля ввода чата (`IM_TEXTAREA`) и из меню сообщения на десктопе и в мобильном приложении (`IM_CONTEXT_MENU`, `IMMOBILE_CONTEXT_MENU`).
+- От 1 до 10 согласующих, правило «Единогласно» или «Большинство».
+- До 10 файлов по 25 МиБ; файлы складываются в папку «Согласования» на Диске портала.
+- Голосование кнопками в личном чате с ботом; после каждого голоса сообщения у всех согласующих обновляются.
+- Инициатор получает сообщение бота о каждом голосе и может отменить запрос.
+- Списки «Мои запросы» и «Входящие», журнал событий по каждому запросу.
 
-## Технологии
+Чего нет: результат не публикуется в исходный чат, у отказа нет причины, нет сроков и напоминаний, голос нельзя изменить.
+
+## Как устроено
 
 | Слой | Технология |
-|------|------------|
-| Frontend | Vue 3 + Nuxt 3, Pinia, Tailwind CSS, [@bitrix24/b24ui-nuxt](https://bitrix24.github.io/b24ui/) |
-| Backend | Python 3.11 + Django |
-| База данных | PostgreSQL 17 + Bitrix24 Entity Storage |
-| Инфраструктура | Docker, Docker Compose, Cloudpub (для dev туннелирования) |
-| Bitrix24 API | `imbot.*`, `entity.*`, `placement.*`, `disk.*`, `user.get` |
+|---|---|
+| Интерфейс | Nuxt 4, Vue 3, Pinia, Tailwind CSS 4, [@bitrix24/b24ui-nuxt](https://bitrix24.github.io/b24ui/) |
+| API | Python 3.11, Django 5.2, gunicorn |
+| Данные | Хранилище приложения на портале (`entity.*`) и Диск портала |
+| Сборка | Один Docker-образ: nginx + Nuxt + Django |
 
-> Альтернативный backend на PHP (Symfony 7) присутствует в `backends/php/` (статус реализации см. в технических заметках).
+Бэкенд не хранит состояния: у него нет базы данных и нет сохранённых токенов порталов. Авторизацию приносит каждый запрос, а кто её владелец, бэкенд уточняет у портала.
 
-## Требования
+Права приложения: `im`, `imbot`, `entity`, `disk`, `placement`, `user_basic`, `mobile`.
 
-- Docker и Docker Compose
-- Портал Bitrix24 с правами администратора для установки приложения
-- Зарегистрированное приложение в Bitrix24 (получение `CLIENT_ID` / `CLIENT_SECRET`)
-- Скоупы: `im, imbot, entity, disk, placement, user`
-- Публичный HTTPS-домен (или Cloudpub-туннель в dev)
-
-## Быстрый старт (dev)
+## Быстрый старт
 
 ```bash
-# 1. Скопировать переменные окружения
-cp .env.example .env
-# Заполнить: VIRTUAL_HOST, CLIENT_ID, CLIENT_SECRET, SCOPE, CLOUDPUB_TOKEN
-
-# 2. Запустить Python backend + frontend + Cloudpub
-make dev-python
-# или
-COMPOSE_PROFILES=frontend,python,cloudpub docker compose --env-file .env up --build
+cp .env.example .env      # VIRTUAL_HOST, CLOUDPUB_TOKEN, JWT_SECRET
+make dev-python           # интерфейс + API + туннель cloudpub
 ```
 
-После старта установите приложение на портал Bitrix24, указав публичный URL (`VIRTUAL_HOST`) в качестве handler-URL.
+После старта установите приложение на портал, указав публичный адрес из `VIRTUAL_HOST`.
 
-## Структура проекта
+```bash
+make test                 # тесты бэкенда
+make lint                 # линтер фронтенда
+```
+
+## Структура
 
 ```
 .
-├── backends/
-│   ├── python/              # Django backend (основной)
-│   └── php/                 # Symfony backend (альтернативный)
-├── frontend/                # Vue 3 + Nuxt 3
-│   └── app/
-│       ├── pages/           # install, index
-│       ├── components/      # approval/* — карточки, формы, кнопки
-│       ├── stores/          # Pinia
-│       └── composables/     # useB24Frame, useApprovalData
-├── infrastructure/          # init.sql, конфиги
-├── docs/
-│   └── ru/                  # Документация (русский)
-├── docker-compose.yml
-├── Makefile                 # dev-python, prod-python, dev-php и т.д.
-└── README.md
+├── backends/python/api/     # Django: approvals (правила, сервис, клиент Б24), bot, disk, core, main
+├── frontend/                # Nuxt: pages, components/approval, stores, i18n (19 языков)
+├── deploy/                  # запуск контейнера, примеры переменных
+├── infrastructure/nginx/    # nginx для варианта из трёх контейнеров
+├── docs/                    # документация
+├── app.json                 # манифест приложения
+├── Dockerfile               # боевой образ
+├── docker-compose.dev.yml   # dev-окружение
+└── docker-compose.yml       # вариант из трёх контейнеров
 ```
+
+## Ветки
+
+- `prod` — боевая: из неё собрано приложение на Timeweb. Пуш в неё считать выкаткой.
+- `DEV` — ветка по умолчанию на GitHub, отстаёт от `prod`.
+- Работа ведётся в отдельных ветках с PR в `prod`.
 
 ## Документация
 
-Полная документация — в [docs/ru/INDEX.md](docs/ru/INDEX.md).
-
-Ключевые разделы:
-- [Архитектура](docs/ru/ARCHITECTURE.md)
-- [REST API](docs/ru/API.md)
-- [Frontend](docs/ru/FRONTEND.md)
-- [База данных](docs/ru/DATABASE.md)
-- [Интеграция Bitrix24](docs/ru/BITRIX24_INTEGRATION.md)
+- [Справочник API](docs/ru/API.md)
+- [Хранение данных](docs/ru/DATABASE.md)
 - [Развёртывание](docs/ru/DEPLOYMENT.md)
-- [Разработка](docs/ru/DEVELOPMENT.md)
-- [Решение проблем](docs/ru/TROUBLESHOOTING.md)
-
-## Лицензия
-
-См. файл `LICENSE` (если присутствует) или уточните у владельца репозитория.
+- [Архитектура](docs/ru/ARCHITECTURE.md)
+- [Интеграция с Битрикс24](docs/ru/BITRIX24_INTEGRATION.md)
+- [Релизы](docs/RELEASES.md) и [журнал изменений](docs/CHANGELOG.md)
+- [Полный указатель](docs/ru/INDEX.md)

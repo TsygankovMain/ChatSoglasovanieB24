@@ -18,7 +18,7 @@
 #### Реализация
 - **[ru/API.md](ru/API.md)** — справочник REST API endpoints (создание, получение, голосование).
 - **[ru/FRONTEND.md](ru/FRONTEND.md)** — архитектура фронтенда (Vue 3 + Nuxt 3, компоненты, Pinia, composables).
-- **[ru/DATABASE.md](ru/DATABASE.md)** — схема Bitrix24 Entity Storage и опциональной PostgreSQL.
+- **[ru/DATABASE.md](ru/DATABASE.md)** — что и где хранится: хранилище приложения на портале и Диск; своей базы данных нет.
 - **[ru/BITRIX24_INTEGRATION.md](ru/BITRIX24_INTEGRATION.md)** — интеграция с Bitrix24 (OAuth, скоупы, бот, placement, entity, disk).
 
 #### Развертывание и операции
