@@ -188,6 +188,10 @@
         "cancelled": "Cancelled",
         "unknown": "Event"
       }
+    },
+    "update_notice": {
+      "admin": "Version 2 of Chat Approval is available. Version 1 will be switched off on {date}. Update the app in your Bitrix24 Market — requests and history are kept.",
+      "user": "Version 2 of Chat Approval is available. Version 1 will be switched off on {date}. Ask your portal administrator to update the app in the Market."
     }
   },
   "components": {
