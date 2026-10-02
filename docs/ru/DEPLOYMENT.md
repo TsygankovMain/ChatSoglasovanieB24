@@ -9,9 +9,9 @@
 | Площадка | Адрес | Что развёрнуто | Как обновляется |
 |---|---|---|---|
 | Timeweb App Platform | `tsygankovmain-chatsoglasovanieb24-c9c9.twc1.net` | ветка `prod`, на этот адрес смотрят установленные порталы | из ветки `prod`; пуш в неё считать выкаткой |
-| Сервер Мейнсофт `main.mainsoft.su` | `soglasovanie.apps.mainsoft.su` | копия ветки `prod` (`ceec187`) в закрытой сети, без выхода в интернет | вручную, см. ниже |
+| Сервер Мейнсофт `main.mainsoft.su` | `soglasovanie.apps.mainsoft.su` | с 02.10.2026 ветка `claude/tech-debt` (`a42b887`), сеть `edge`, выход в интернет открыт. Порталы на этот адрес пока не переведены | вручную, см. ниже |
 
-Ветка `claude/tech-debt` на 02.10.2026 не выкачена ни на одну площадку.
+На Timeweb остаётся прежняя версия из `prod`.
 
 ## Переменные окружения
 
@@ -52,7 +52,7 @@ docker compose up -d
 docker compose ps        # ждать healthy
 ```
 
-Первый перевод из зеркала в рабочий режим — один раз: в `compose.yml` заменить сеть `mirror` на `edge`. В закрытой сети приложение не может обратиться к порталу и работать с ним не будет.
+Приложение работает в сети `edge` — ему нужен выход в интернет, чтобы обращаться к порталам. Прежний зеркальный вариант настроек сохранён на сервере как `compose.yml.mirror`.
 
 Проверка снаружи:
 
@@ -64,7 +64,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://soglasovanie.apps.mains
   -d '{"DOMAIN":"mainsoft.bitrix24.ru","AUTH_ID":"x","member_id":"x"}'
 ```
 
-Откат: `docker tag mainsoft/soglasovanie:prev mainsoft/soglasovanie:latest && docker compose up -d`, исходники вернуть из `src.prev`.
+Откат: `docker tag mainsoft/soglasovanie:prev mainsoft/soglasovanie:latest && docker compose up -d`, исходники вернуть из `src.prev`. Версия до 02.10.2026 сохранена как образ `mainsoft/soglasovanie:prod-ceec187` и папка `src.ceec187`.
 
 ## Перевод порталов на новый адрес
 
@@ -72,7 +72,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://soglasovanie.apps.mains
 
 Поэтому порядок такой:
 
-1. Выкатить и проверить приложение на новом адресе. Timeweb при этом продолжает работать.
+1. Выкатить и проверить приложение на новом адресе — сделано 02.10.2026. Timeweb при этом продолжает работать.
 2. В кабинете разработчика выпустить новую версию приложения с адресами `https://soglasovanie.apps.mainsoft.su/…` (те же пути, что в `app.json`).
 3. Порталы переходят на новый адрес по мере обновления приложения. Пока портал не обновился, он работает через Timeweb.
 4. Timeweb выключать, когда обновились все установки.
