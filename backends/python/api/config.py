@@ -29,7 +29,7 @@ def load_config() -> Config:
     return Config(
         debug=build_target.lower() == "dev",
         cloudpub_token=env.str("CLOUDPUB_TOKEN", ""),
-        jwt_secret=env.str("JWT_SECRET", "default_jwt_secret"),
+        jwt_secret=env.str("JWT_SECRET", ""),
         jwt_algorithm=env.str("JWT_ALGORITHM", "HS256"),
         client_id=env.str("CLIENT_ID", ""),
         client_secret=env.str("CLIENT_SECRET", ""),

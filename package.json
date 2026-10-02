@@ -1,20 +1,14 @@
 {
-  "name": "@bitrix24/starter-kit",
+  "name": "chat-approval",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cd frontend && npm run dev",
-    "build": "cd frontend && npm run build",
-    "preview": "cd frontend && npm run preview",
-    "lint": "cd frontend && npm run lint",
-    "mcp:install": "cd mcp-server && npm install",
-    "mcp:dev": "cd mcp-server && npm run dev",
-    "mcp:build": "cd mcp-server && npm run build",
-    "mcp:start": "cd mcp-server && npm start"
+    "dev": "cd frontend && pnpm run dev",
+    "build": "cd frontend && pnpm run build",
+    "preview": "cd frontend && pnpm run preview",
+    "lint": "cd frontend && pnpm run lint"
   },
-  "dependencies": {
-  },
-  "devDependencies": {
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }

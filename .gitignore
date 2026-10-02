@@ -39,7 +39,12 @@ venv/
 !.env.example
 !.env.dev.example
 !.env.prod.example
-!backends/php/.env*
+deploy/*.env
 
-# dev/build outputs
-backend/php/vendor
+# Agent and editor configs hold personal tokens
+.codex/
+.mcp.json
+.superpowers/
+
+# Node compile cache
+node-compile-cache/

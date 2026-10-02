@@ -9,6 +9,11 @@ BASE_DIR = Path(__file__).resolve().parent
 SECRET_KEY = config.jwt_secret
 DEBUG = config.debug
 
+# The JWT carries the user's identity and OAuth token; with a guessable signing
+# key anyone can mint one, so production refuses to start on a placeholder.
+if not DEBUG and len(config.jwt_secret) < 32:
+    raise RuntimeError("JWT_SECRET must be a random string of at least 32 characters in production.")
+
 def _normalize_origin(value: str) -> str:
     raw = (value or "").strip()
     if not raw:

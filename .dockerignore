@@ -16,7 +16,6 @@ Thumbs.db
 .env
 .env.*
 deploy/*.env
-backends/php/.env
 
 # Dependency and build artifacts
 node_modules
@@ -26,7 +25,6 @@ frontend/.output
 frontend/.cache
 frontend/.pnpm-store
 frontend/.npm-cache
-backends/php/vendor
 
 # Runtime noise
 logs

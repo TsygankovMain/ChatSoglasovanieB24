@@ -49,12 +49,9 @@ Bitrix24 → HTTPS → frontend (Nuxt SPA, порт 3000)
 | `BUILD_TARGET` | `production` | **Обязательно** — включает продакшен-режим Django |
 | `CLIENT_ID` | `local.abc123…` | ID приложения из Битрикс24 |
 | `CLIENT_SECRET` | `xyz789…` | Секрет приложения из Битрикс24 |
-| `JWT_SECRET` | `(random 64 hex)` | Секрет для JWT токенов |
+| `JWT_SECRET` | `(random 64 hex)` | Секрет для JWT, не короче 32 символов — иначе бэкенд не стартует |
 | `JWT_ALGORITHM` | `HS256` | Алгоритм JWT (оставить как есть) |
 | `VIRTUAL_HOST` | `https://your-frontend.twc1.net` | **URL фронтенда** — используется для CORS |
-| `DJANGO_SUPERUSER_USERNAME` | `admin` | Опционально |
-| `DJANGO_SUPERUSER_EMAIL` | `admin@example.com` | Опционально |
-| `DJANGO_SUPERUSER_PASSWORD` | `strongpass` | Опционально |
 
 > ⚠️ `VIRTUAL_HOST` должен указывать на **URL фронтенда**, а не бэкенда.
 > Это нужно, чтобы бэкенд добавил фронтенд в `CORS_ALLOWED_ORIGINS`.
