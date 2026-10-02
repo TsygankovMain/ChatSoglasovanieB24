@@ -2,9 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [prod, DEV]
   pull_request:
-    branches: [main]
 
 # Cancel in-flight runs for the same ref/pr — saves CI minutes on rapid pushes.
 concurrency:
@@ -47,8 +46,16 @@ jobs:
         run: |
           python -m unittest discover -s tests -v
 
+      - name: Production settings load
+        env:
+          BUILD_TARGET: production
+          VIRTUAL_HOST: https://test.example.com
+          JWT_SECRET: ci-secret-do-not-use-in-prod-32bytes
+        run: |
+          python -c "import settings"
+
   frontend-lint:
-    name: Frontend (lint)
+    name: Frontend (lint + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,17 +63,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          # No package-lock.json yet — npm install (not ci) tolerates that.
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
 
   i18n-parity:
     name: i18n RU/EN parity
